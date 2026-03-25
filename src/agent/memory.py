@@ -25,9 +25,11 @@ def _clean_for_hdf5(obj: Any) -> Any:
     """
     Recursively clean an object for HDF5 serialization.
 
-    Converts numpy types, datetime objects, and other non-standard types
+    Converts numpy types, datetime objects, None, and other non-standard types
     to JSON-serializable formats that HDF5/h5py can handle.
     """
+    if obj is None:
+        return "None"
     if isinstance(obj, np.integer):
         return int(obj)
     if isinstance(obj, np.floating):
@@ -40,6 +42,8 @@ def _clean_for_hdf5(obj: Any) -> Any:
         return [_clean_for_hdf5(item) for item in obj]
     if isinstance(obj, datetime):
         return obj.isoformat()
+    if isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
     return obj
 
 
@@ -198,15 +202,18 @@ class AgentMemory:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         checkpoint_name = name or f"checkpoint_{timestamp}"
         checkpoint_path = self._checkpoint_dir / f"{checkpoint_name}.h5ad"
+        history_path = self._checkpoint_dir / f"{checkpoint_name}_history.json"
 
-        if "analysis_history" in adata.uns:
-            cleaned_history = []
-            for entry in adata.uns["analysis_history"]:
-                cleaned_entry = _clean_for_hdf5(entry)
-                cleaned_history.append(cleaned_entry)
-            adata.uns["analysis_history"] = cleaned_history
+        analysis_history = adata.uns.pop("analysis_history", None)
 
         adata.write_h5ad(checkpoint_path)
+
+        if analysis_history is not None:
+            with open(history_path, "w", encoding="utf-8") as f:
+                json.dump(analysis_history, f, ensure_ascii=False, indent=2)
+
+        if analysis_history is not None:
+            adata.uns["analysis_history"] = analysis_history
 
         self._memory["checkpoints"].append({
             "name": checkpoint_name,
