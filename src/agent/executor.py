@@ -126,6 +126,7 @@ class SkillExecutor:
         """
         import anndata as ad
         import scanpy as sc
+        import pandas as pd
         import os
         import sys
         import matplotlib
@@ -156,6 +157,7 @@ class SkillExecutor:
             "sys": sys,
             "plt": plt,
             "matplotlib": matplotlib,
+            "pd": pd,
         }
 
         exec(code_template, exec_globals, local_vars)
