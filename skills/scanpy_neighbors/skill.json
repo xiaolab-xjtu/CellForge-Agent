@@ -1,0 +1,51 @@
+{
+  "skill_id": "scanpy_neighbors",
+  "execution_layer": {
+    "code_template": "import scanpy as sc\nimport anndata as ad\nfrom datetime import datetime\n\ndef run_neighbors(input_data, params_dict=None, default_params=None):\n    \"\"\"\n    Compute k-nearest neighbor graph for cells.\n    \n    Memory-First: Accepts both file path (str) and AnnData object.\n    Parameter Safety: Uses default_params merged with agent_params.\n    Metadata Footprinting: Records execution to adata.uns['analysis_history'].\n    \n    Parameters:\n    ----------\n    input_data : str or AnnData\n        Path to AnnData file or AnnData object in memory\n    params_dict : dict, optional\n        Parameters from Agent (overrides defaults)\n    default_params : dict, optional\n        Neighbors computation parameters\n    \n    Returns:\n    --------\n    AnnData with neighbors graph in obsp and obsm\n    \"\"\"\n    adata = input_data if isinstance(input_data, ad.AnnData) else sc.read(input_data)\n    \n    default_params = default_params or {\n        'n_neighbors': 15,\n        'n_pcs': 50,\n        'use_rep': 'X_pca',\n        'metric': 'euclidean'\n    }\n    agent_params = params_dict or {}\n    current_params = {**default_params, **agent_params}\n    \n    sc.pp.neighbors(\n        adata,\n        n_neighbors=current_params.get('n_neighbors', 15),\n        n_pcs=current_params.get('n_pcs', 50),\n        use_rep=current_params.get('use_rep', 'X_pca'),\n        metric=current_params.get('metric', 'euclidean'),\n        inplace=True\n    )\n    \n    has_connectivities = 'connectivities' in adata.obsp\n    has_distances = 'distances' in adata.obsp\n    \n    if 'analysis_history' not in adata.uns:\n        adata.uns['analysis_history'] = []\n    \n    adata.uns['analysis_history'].append({\n        'skill_id': 'scanpy_neighbors',\n        'params': current_params,\n        'metrics': {\n            'n_neighbors': current_params.get('n_neighbors', 15),\n            'n_pcs': current_params.get('n_pcs', 50),\n            'use_rep': current_params.get('use_rep', 'X_pca'),\n            'has_connectivities': has_connectivities,\n            'has_distances': has_distances,\n            'n_cells': adata.n_obs\n        },\n        'timestamp': datetime.now().isoformat()\n    })\n    \n    return adata",
+    "required_inputs": ["input_data", "params_dict"],
+    "default_params": {
+      "n_neighbors": 15,
+      "n_pcs": 50,
+      "use_rep": "X_pca",
+      "metric": "euclidean"
+    },
+    "output_objects": ["neighbors_adata"]
+  },
+  "cognitive_layer": {
+    "purpose": "The k-nearest neighbor graph represents each cell's relationship to other cells based on transcriptional similarity. This graph is the foundation for clustering, trajectory analysis, and UMAP visualization. The graph captures local structure in the data.",
+    "parameter_impact": {
+      "n_neighbors": "Number of neighbors for each cell. More neighbors create smoother transitions between populations. Fewer neighbors preserve more local, fine-grained structure.",
+      "n_pcs": "Number of principal components to use for distance calculation. Fewer PCs may miss subtle structure; more may include noise."
+    }
+  },
+  "critic_layer": {
+    "metrics_to_extract": [
+      "n_neighbors",
+      "n_pcs",
+      "use_rep",
+      "has_connectivities",
+      "has_distances"
+    ],
+    "success_thresholds": "has_connectivities == True and has_distances == True",
+    "context_params": ["protocol"],
+    "error_handling": {
+      "KeyError: X_pca not found": "Run PCA (sc.tl.pca) before computing neighbors.",
+      "ValueError: n_neighbors must be less than number of cells": "Ensure n_neighbors is less than the number of cells after filtering."
+    },
+    "post_processing_code": "def critic_post_process(adata, context=None):\n    context = context or {}\n    protocol = context.get('protocol', '10x Genomics')\n    \n    metrics = {}\n    warnings = []\n    \n    last_neighbors = None\n    for entry in reversed(adata.uns.get('analysis_history', [])):\n        if entry.get('skill_id') == 'scanpy_neighbors':\n            last_neighbors = entry\n            break\n    \n    if last_neighbors is None:\n        return {'metrics': {}, 'warnings': ['Neighbors computation not found in history'], 'success': False}\n    \n    metrics.update(last_neighbors.get('metrics', {}))\n    \n    has_conn = metrics.get('has_connectivities', False)\n    has_dist = metrics.get('has_distances', False)\n    n_neighbors = metrics.get('n_neighbors', 0)\n    \n    if not has_conn or not has_dist:\n        warnings.append('Neighborn graph incomplete: missing connectivities or distances.')\n    \n    if n_neighbors >= adata.n_obs:\n        warnings.append(f'n_neighbors ({n_neighbors}) is >= number of cells. This is invalid.')\n    \n    success = has_conn and has_dist and n_neighbors < adata.n_obs\n    \n    return {\n        'metrics': metrics,\n        'warnings': warnings,\n        'success': success,\n        'context_used': protocol\n    }"
+  },
+  "parameter_science_guide": {
+    "n_neighbors": {
+      "fragmented_clusters": {
+        "adjust": "increase n_neighbors by 5-10",
+        "causal_chain": "More neighbors creates a smoother graph, connecting similar cells across a broader neighborhood, reducing fragmentation.",
+        "expected_effect": "Smoother, larger clusters"
+      },
+      "merged_clusters": {
+        "adjust": "decrease n_neighbors by 5-10",
+        "causal_chain": "Fewer neighbors makes the graph more local and sensitive to fine-grained differences between cells.",
+        "expected_effect": "More distinct, smaller clusters"
+      }
+    }
+  }
+}

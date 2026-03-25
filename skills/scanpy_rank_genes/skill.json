@@ -1,0 +1,47 @@
+{
+  "skill_id": "scanpy_rank_genes",
+  "execution_layer": {
+    "code_template": "import scanpy as sc\nimport anndata as ad\nfrom datetime import datetime\nimport pandas as pd\n\ndef run_rank_genes(input_data, params_dict=None, default_params=None):\n    \"\"\"\n    Rank genes for characterizing groups (differential expression analysis).\n    \n    Memory-First: Accepts both file path (str) and AnnData object.\n    Parameter Safety: Uses default_params merged with agent_params.\n    Metadata Footprinting: Records execution to adata.uns['analysis_history'].\n    \n    Parameters:\n    ----------\n    input_data : str or AnnData\n        Path to AnnData file or AnnData object in memory\n    params_dict : dict, optional\n        Parameters from Agent (overrides defaults)\n    default_params : dict, optional\n        DEG parameters\n    \n    Returns:\n    --------\n    AnnData with DEG results in uns['rank_genes_groups']\n    \"\"\"\n    adata = input_data if isinstance(input_data, ad.AnnData) else sc.read(input_data)\n    \n    default_params = default_params or {\n        'groupby': 'leiden',\n        'method': 't-test',\n        'corr_method': 'benjamini-hochberg',\n        'pts': True,\n        'key_added': 'rank_genes_groups'\n    }\n    agent_params = params_dict or {}\n    current_params = {**default_params, **agent_params}\n    \n    groupby_key = current_params.get('groupby', 'leiden')\n    \n    if groupby_key not in adata.obs.columns:\n        raise ValueError(f\"Group key '{groupby_key}' not found in obs. Available columns: {list(adata.obs.columns)}\")\n    \n    n_groups = adata.obs[groupby_key].nunique()\n    \n    sc.tl.rank_genes_groups(\n        adata,\n        groupby=groupby_key,\n        method=current_params.get('method', 't-test'),\n        corr_method=current_params.get('corr_method', 'benjamini-hochberg'),\n        pts=current_params.get('pts', True),\n        key_added=current_params.get('key_added', 'rank_genes_groups'),\n        inplace=True\n    )\n    \n    deg_result = adata.uns.get('rank_genes_groups', {})\n    \n    n_significant_genes = 0\n    if 'names' in deg_result:\n        for group in deg_result['names'].dtype.names or []:\n            pvals = deg_result.get('pvals_adj', {}).get(group, [])\n            if len(pvals) > 0:\n                n_sig = (pvals < 0.05).sum()\n                n_significant_genes += n_sig\n    \n    if 'analysis_history' not in adata.uns:\n        adata.uns['analysis_history'] = []\n    \n    adata.uns['analysis_history'].append({\n        'skill_id': 'scanpy_rank_genes',\n        'params': current_params,\n        'metrics': {\n            'groupby': groupby_key,\n            'n_groups': int(n_groups),\n            'method': current_params.get('method', 't-test'),\n            'n_significant_genes': int(n_significant_genes),\n            'has_results': 'names' in deg_result\n        },\n        'timestamp': datetime.now().isoformat()\n    })\n    \n    return adata",
+    "required_inputs": ["input_data", "params_dict"],
+    "default_params": {
+      "groupby": "leiden",
+      "method": "t-test",
+      "corr_method": "benjamini-hochberg",
+      "pts": true,
+      "key_added": "rank_genes_groups"
+    },
+    "output_objects": ["deg_adata"]
+  },
+  "cognitive_layer": {
+    "purpose": "Differential expression analysis identifies genes that are significantly different between groups (clusters). These marker genes characterize each cluster's identity and help annotate cell types. Statistical tests compare gene expression distributions between groups.",
+    "parameter_impact": {
+      "method": "t-test is faster but assumes equal variance. wilcoxon (Mann-Whitney U) is more robust to outliers. logistic regression is best for complex designs.",
+      "groupby": "Column in obs defining the groups to compare. Typically cluster labels from Leiden clustering."
+    }
+  },
+  "critic_layer": {
+    "metrics_to_extract": [
+      "groupby",
+      "n_groups",
+      "method",
+      "n_significant_genes",
+      "has_results"
+    ],
+    "success_thresholds": "has_results == True and n_significant_genes > 0",
+    "context_params": [],
+    "error_handling": {
+      "KeyError: groupby key not found": "Ensure the groupby column exists in adata.obs. Run clustering first.",
+      "ValueError: X is not logarithmized": "DEG analysis requires log-transformed data. Run normalization first."
+    },
+    "post_processing_code": "def critic_post_process(adata, context=None):\n    context = context or {}\n    \n    metrics = {}\n    warnings = []\n    \n    last_deg = None\n    for entry in reversed(adata.uns.get('analysis_history', [])):\n        if entry.get('skill_id') == 'scanpy_rank_genes':\n            last_deg = entry\n            break\n    \n    if last_deg is None:\n        return {'metrics': {}, 'warnings': ['DEG analysis not found in history'], 'success': False}\n    \n    metrics.update(last_deg.get('metrics', {}))\n    \n    has_results = metrics.get('has_results', False)\n    n_significant = metrics.get('n_significant_genes', 0)\n    n_groups = metrics.get('n_groups', 0)\n    \n    if not has_results:\n        warnings.append('CRITICAL: No DEG results found. Check if rank_genes_groups was properly computed.')\n    \n    if n_significant == 0:\n        warnings.append('WARNING: No significantly differentially expressed genes found at p < 0.05.')\n    \n    if n_groups < 2:\n        warnings.append(f'Only {n_groups} group found. Need at least 2 groups for comparison.')\n    \n    success = has_results and n_groups >= 2\n    \n    return {\n        'metrics': metrics,\n        'warnings': warnings,\n        'success': success,\n        'context_used': 'default'\n    }"
+  },
+  "parameter_science_guide": {
+    "method": {
+      "too_many_outliers": {
+        "adjust": "switch from t-test to wilcoxon",
+        "causal_chain": "Wilcoxon rank-sum test is robust to outliers as it uses ranks rather than means.",
+        "expected_effect": "Fewer false positives from outlier influence"
+      }
+    }
+  }
+}

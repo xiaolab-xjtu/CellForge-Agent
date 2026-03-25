@@ -1,0 +1,3 @@
+Identify all major immune cell types in PBMC dataset.
+Compare cell type composition with standard PBMC reference.
+Find marker genes for each identified cell population.

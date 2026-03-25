@@ -1,0 +1,51 @@
+This is a solid experimental setup. Studying Interferon-beta (IFN-$\beta$) stimulation in PBMCs is a classic model for understanding immune activation and transcriptomic shifts.
+
+Below is a comprehensive single-cell RNA sequencing (scRNA-seq) analysis plan, moving from standard processing to advanced trajectory inference to capture the "evolution" of the immune response.
+
+---
+
+## 1. Project Overview
+* **Sample Groups:** Control (Unstimulated) PBMCs vs. IFN-$\beta$ Stimulated PBMCs.
+* **Objective:** Identify cell-type-specific responses to IFN-$\beta$ and reconstruct the transition states of immune cells from a resting to an activated state.
+
+---
+
+## 2. Phase I: Basic Bioinformatic Processing
+This phase focuses on turning raw reads into a clean, annotated cell-by-gene matrix.
+
+### Data Preprocessing & QC
+* **Alignment:** Use `CellRanger` (for 10x Genomics) or `kb-python` to align reads to the reference genome (e.g., GRCh38).
+* **Quality Control:** Filter cells based on:
+    * **Library size** (Total UMI counts).
+    * **Detected genes** (Avoid "empty" droplets or doublets).
+    * **Mitochondrial percentage:** High % often indicates stressed/dying cells.
+* **Normalization:** Use `LogNormalize` or `SCTransform` (Seurat) to account for sequencing depth variations.
+
+### Integration & Dimensionality Reduction
+* **Integration:** Use Harmony to integrate the Control and Stimulated datasets, removing batch effects while preserving biological variance.
+* **Clustering:** Perform PCA followed by Shared Nearest Neighbor (SNN) clustering.
+* **Visualization:** Use **UMAP** or **t-SNE** to visualize the cell populations (T-cells, B-cells, Monocytes, NK cells, etc.).
+
+
+
+---
+
+## 3. Phase II: Differential State Analysis
+Once clusters are defined, we quantify the impact of IFN-$\beta$.
+
+### Cell Type Annotation
+* Use canonical markers andautomated tools like 'Typerlist'.
+
+### Differential Expression (DE)
+* **Consensus Markers:** Find markers for each cell type.
+* **Stimulation Markers:** Perform "Condition vs. Control" DE analysis within each cluster to identify **Interferon-Stimulated Genes (ISGs)** like *ISG15*, *IFI6*, and *MX1*.
+* **Pathway Enrichment:** Apply **GSEA** or **Over-Representation Analysis (ORA)** using the MSigDB Hallmark or Reactome databases to confirm viral response pathways.
+
+---
+
+3. Phase III: Monocyte-Specific Trajectory & EvolutionTo capture the high-resolution "evolution" of immune activation, we isolate the Monocyte lineage ($CD14^+$ Classical and $FCGR3A^+$ Non-classical) to eliminate noise from other PBMC populations.Sub-clustering & RefinementLineage Isolation: Extract the Monocyte clusters and perform re-normalization and re-scaling.Feature Selection: Re-calculate Highly Variable Genes (HVGs) specifically within the Monocyte subset.Rationale: This unmasks subtle interferon-responsive drivers that are often overshadowed by major lineage markers in the global PBMC analysis.Sub-state Identification: Identify transitionary states (e.g., Intermediate Monocytes) that bridge the gap between resting and fully activated phenotypes.Trajectory Construction (The "Activation Path")Tool Selection: Monocle3 (for manifold learning) or Slingshot (for lineage branching).Root Definition: Programmatically set the "Root" of the trajectory within the Control (Unstimulated) CD14+ cluster.Pseudotime Mapping: Calculate a continuous "activation score" (pseudotime) representing the progression from a quiescent state to an $IFN$-primed effector state.Directional Validation: (Optional) Use scVelo to calculate RNA velocity vectors, confirming that the transcriptional "momentum" flows from the Control state toward the Stimulated state.
+
+
+
+---
+

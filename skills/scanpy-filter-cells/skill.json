@@ -1,0 +1,73 @@
+{
+  "skill_id": "scanpy_filter_cells",
+  "execution_layer": {
+    "code_template": "import scanpy as sc\nimport anndata as ad\nfrom datetime import datetime\n\ndef run_filter_cells(input_data, params_dict=None, default_params=None):\n    adata = input_data if isinstance(input_data, ad.AnnData) else sc.read(input_data)\n    \n    default_params = default_params or {'min_counts': None, 'min_genes': None, 'max_counts': None, 'max_genes': None, 'inplace': True}\n    agent_params = params_dict or {}\n    current_params = {**default_params, **agent_params}\n    \n    n_cells_before = adata.n_obs\n    \n    result = sc.pp.filter_cells(\n        adata,\n        min_counts=current_params['min_counts'],\n        min_genes=current_params['min_genes'],\n        max_counts=current_params['max_counts'],\n        max_genes=current_params['max_genes'],\n        inplace=current_params['inplace']\n    )\n    \n    n_cells_after = adata.n_obs if current_params['inplace'] else result[0].sum()\n    n_cells_removed = n_cells_before - n_cells_after\n    removal_rate = n_cells_removed / n_cells_before if n_cells_before > 0 else 0\n    \n    if 'analysis_history' not in adata.uns:\n        adata.uns['analysis_history'] = []\n    \n    adata.uns['analysis_history'].append({\n        'skill_id': 'scanpy_filter_cells',\n        'params': current_params,\n        'metrics': {'n_cells_before': n_cells_before, 'n_cells_after': n_cells_after, 'n_cells_removed': n_cells_removed, 'removal_rate': removal_rate},\n        'timestamp': datetime.now().isoformat()\n    })\n    \n    return adata\n",
+    "required_inputs": [
+      "input_data",
+      "params_dict"
+    ],
+    "default_params": {
+      "min_counts": null,
+      "min_genes": null,
+      "max_counts": null,
+      "max_genes": null,
+      "inplace": true
+    },
+    "output_objects": [
+      "filtered_adata"
+    ]
+  },
+  "cognitive_layer": {
+    "purpose": "Filter low-quality cells based on counts and gene detection. Cells with low counts may be empty droplets or dying cells. Cells with high counts may be doublets. Critical preprocessing before downstream analysis.",
+    "parameter_impact": {
+      "min_counts": "Lower bound on total RNA. Increasing removes more cells. Cells with low counts often represent noise.",
+      "min_genes": "Lower bound on detected genes. Increasing removes cells with few expressed genes.",
+      "max_counts": "Upper bound on RNA. Cells exceeding may be doublets or contaminated.",
+      "max_genes": "Upper bound on detected genes. Cells exceeding may be multiplets."
+    }
+  },
+  "critic_layer": {
+    "metrics_to_extract": [
+      "n_cells_before",
+      "n_cells_after",
+      "n_cells_removed",
+      "removal_rate",
+      "mean_genes_per_cell"
+    ],
+    "success_thresholds": "removal_rate <= t['max_removal_rate'] and n_cells >= t['min_cells']",
+    "context_params": [
+      "protocol"
+    ],
+    "error_handling": {
+      "ValueError: no filter thresholds": "Provide at least one filter parameter",
+      "All cells removed": "Thresholds too stringent - reduce min_counts/min_genes"
+    },
+    "post_processing_code": "\ndef critic_post_process(adata, context=None):\n    context = context or {}\n    protocol = context.get('protocol', '10x Genomics')\n    \n    thresholds = {\n        '10x Genomics': {'max_removal_rate': 0.5, 'min_cells': 100, 'min_genes': 200},\n        'Smart-seq2': {'max_removal_rate': 0.3, 'min_cells': 50, 'min_genes': 500},\n        'Drop-seq': {'max_removal_rate': 0.4, 'min_cells': 100, 'min_genes': 100},\n        'inDrop': {'max_removal_rate': 0.45, 'min_cells': 100, 'min_genes': 150},\n    }\n    t = thresholds.get(protocol, thresholds['10x Genomics'])\n    \n    metrics = {}\n    warnings_list = []\n    feedback = {}\n    \n    metrics['n_cells'] = adata.n_obs\n    metrics['n_genes'] = adata.n_vars\n    \n    if 'n_genes' in adata.obs:\n        metrics['mean_genes_per_cell'] = float(adata.obs['n_genes'].mean())\n        metrics['median_genes_per_cell'] = float(adata.obs['n_genes'].median())\n    \n    if 'n_counts' in adata.obs:\n        metrics['mean_counts_per_cell'] = float(adata.obs['n_counts'].mean())\n    \n    if metrics.get('removal_rate', 0) > t['max_removal_rate']:\n        msg = f\"HIGH REMOVAL RATE for {protocol}: {metrics['removal_rate']*100:.1f}% removed (expected <{t['max_removal_rate']*100:.0f}%)\"\n        warnings_list.append(msg)\n        feedback['high_removal'] = {'issue': msg, 'primary_adjustment': 'min_counts/min_genes', 'suggested_change': 'reduce thresholds'}\n    \n    if metrics.get('n_cells', 0) < t['min_cells']:\n        msg = f\"FEW CELLS for {protocol}: Only {metrics['n_cells']} remain (expected >={t['min_cells']})\"\n        warnings_list.append(msg)\n    \n    if metrics.get('n_cells', 0) == 0:\n        msg = \"CRITICAL: All cells removed. Thresholds impossibly strict.\"\n        warnings_list.append(msg)\n    \n    success = metrics.get('removal_rate', 0) <= t['max_removal_rate'] and metrics.get('n_cells', 0) >= t['min_cells']\n    \n    return {'metrics': metrics, 'warnings': warnings_list, 'success': success, 'feedback': feedback, 'context_used': protocol}\n"
+  },
+  "parameter_science_guide": {
+    "min_counts": {
+      "too_strict_removal_high": {
+        "adjust": "reduce min_counts by 10-30%",
+        "causal_chain": "Lowering min_counts allows cells with less RNA to pass.",
+        "expected_effect": "Higher cell retention"
+      },
+      "too_lenient_removal_low": {
+        "adjust": "increase min_counts by 10-30%",
+        "causal_chain": "Raising min_counts removes more cells.",
+        "expected_effect": "Lower cell retention, higher mean counts"
+      }
+    },
+    "min_genes": {
+      "too_strict_removal_high": {
+        "adjust": "reduce min_genes by 50-200",
+        "causal_chain": "Lowering min_genes allows cells with fewer detected genes.",
+        "expected_effect": "Higher cell retention"
+      },
+      "too_lenient_removal_low": {
+        "adjust": "increase min_genes by 50-200",
+        "causal_chain": "Raising min_genes removes cells with fewer detected genes.",
+        "expected_effect": "Lower cell retention"
+      }
+    }
+  }
+}

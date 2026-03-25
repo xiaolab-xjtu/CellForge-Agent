@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scAgent_v2"
+version = "0.1.0"
+description = "Single-cell Analysis Agent with ReAct+Skill architecture"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "scanpy>=1.9.0",
+    "anndata>=0.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scAgent_v2*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

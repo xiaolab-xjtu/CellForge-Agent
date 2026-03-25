@@ -1,0 +1,40 @@
+{
+  "skill_id": "scanpy_leiden",
+  "execution_layer": {
+    "code_template": "import scanpy as sc\nimport anndata as ad\nimport matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\nimport os\nfrom datetime import datetime\n\ndef run_leiden(input_data, params_dict=None, default_params=None, output_dir=None):\n    adata = input_data if isinstance(input_data, ad.AnnData) else sc.read(input_data)\n    \n    default_params = default_params or {\n        'resolution': 1.0, \n        'n_neighbors': 15, \n        'random_state': 42, \n        'key_added': 'leiden', \n        'directed': False\n    }\n    agent_params = params_dict or {}\n    current_params = {**default_params, **agent_params}\n    \n    if 'X_pca' not in adata.obsm:\n        raise ValueError(\"X_pca not found. Run PCA before Leiden clustering.\")\n    \n    sc.tl.leiden(\n        adata, \n        resolution=current_params.get('resolution', 1.0), \n        n_neighbors=current_params.get('n_neighbors', 15), \n        random_state=current_params.get('random_state', 42), \n        key_added=current_params.get('key_added', 'leiden'), \n        directed=current_params.get('directed', False)\n    )\n    \n    clusters = adata.obs[current_params.get('key_added', 'leiden')]\n    n_clusters = clusters.nunique()\n    cluster_sizes = clusters.value_counts()\n    \n    fig_path = None\n    if output_dir and 'X_umap' in adata.obsm:\n        os.makedirs(output_dir, exist_ok=True)\n        fig, ax = plt.subplots(figsize=(10, 8))\n        scatter = ax.scatter(\n            adata.obsm['X_umap'][:, 0], \n            adata.obsm['X_umap'][:, 1],\n            c=clusters.cat.codes, \n            cmap='tab20', \n            s=2, \n            alpha=0.6\n        )\n        ax.set_title(f'Leiden Clustering (resolution={current_params.get(\"resolution\", 1.0):.2f})')\n        ax.set_xlabel('UMAP1')\n        ax.set_ylabel('UMAP2')\n        plt.colorbar(scatter, ax=ax, label='Leiden Cluster')\n        \n        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')\n        fig_path = os.path.join(output_dir, f'leiden_{timestamp}.png')\n        fig.savefig(fig_path, dpi=150, bbox_inches='tight')\n        plt.close(fig)\n    \n    if 'analysis_history' not in adata.uns:\n        adata.uns['analysis_history'] = []\n    \n    adata.uns['analysis_history'].append({\n        'skill_id': 'scanpy_leiden', \n        'params': current_params, \n        'metrics': {\n            'n_clusters': int(n_clusters), \n            'cluster_sizes': cluster_sizes.to_dict(), \n            'min_cluster_size': int(cluster_sizes.min()), \n            'max_cluster_size': int(cluster_sizes.max()), \n            'mean_cluster_size': float(cluster_sizes.mean()), \n            'n_cells': adata.n_obs,\n            'fig_path': fig_path\n        }, \n        'timestamp': datetime.now().isoformat()\n    })\n    \n    return adata",
+    "required_inputs": ["input_data", "params_dict"],
+    "default_params": {
+      "resolution": 1.0,
+      "n_neighbors": 15,
+      "random_state": 42,
+      "key_added": "leiden",
+      "directed": false
+    },
+    "output_objects": ["clustered_adata"]
+  },
+  "cognitive_layer": {
+    "purpose": "Leiden clustering partitions single cells into groups based on transcriptional similarity using community detection on a k-nearest neighbor graph.",
+    "parameter_impact": {
+      "resolution": "Higher values produce more clusters.",
+      "n_neighbors": "More neighbors create smoother, larger clusters."
+    }
+  },
+  "critic_layer": {
+    "metrics_to_extract": ["n_clusters", "cluster_sizes", "min_cluster_size", "max_cluster_size", "mean_cluster_size", "fig_path"],
+    "success_thresholds": "n_clusters >= 3 and n_clusters <= 200",
+    "context_params": ["protocol"],
+    "post_processing_code": "def critic_post_process(adata, context=None):\n    context = context or {}\n    protocol = context.get('protocol', '10x Genomics')\n    thresholds = {'10x Genomics': {'min_clusters': 3, 'max_clusters': 200, 'min_cluster_size': 5}}\n    t = thresholds.get(protocol, thresholds['10x Genomics'])\n    metrics = {}\n    warnings = []\n    if 'analysis_history' not in adata.uns:\n        return {'metrics': {}, 'warnings': ['No history'], 'success': False}\n    last_leiden = None\n    for entry in reversed(adata.uns['analysis_history']):\n        if entry.get('skill_id') == 'scanpy_leiden':\n            last_leiden = entry\n            break\n    if last_leiden is None:\n        return {'metrics': {}, 'warnings': ['Leiden not found'], 'success': False}\n    metrics.update(last_leiden.get('metrics', {}))\n    n_clusters = metrics.get('n_clusters', 0)\n    min_cluster_size = metrics.get('min_cluster_size', 0)\n    if n_clusters < t['min_clusters']:\n        warnings.append(f'UNDER-SEGMENTATION: Only {n_clusters} clusters found')\n    if n_clusters > t['max_clusters']:\n        warnings.append(f'OVER-SEGMENTATION: {n_clusters} clusters found')\n    if min_cluster_size < t['min_cluster_size']:\n        warnings.append(f'SMALL CLUSTERS: {min_cluster_size} cells minimum')\n    success = n_clusters >= t['min_clusters'] and n_clusters <= t['max_clusters']\n    return {'metrics': metrics, 'warnings': warnings, 'success': success, 'context_used': protocol}"
+  },
+  "parameter_science_guide": {
+    "resolution": {
+      "too_few_clusters": {
+        "adjust": "increase resolution by 0.2-0.5",
+        "causal_chain": "Higher resolution lowers the similarity threshold for cluster formation"
+      },
+      "too_many_clusters": {
+        "adjust": "decrease resolution by 0.2-0.5",
+        "causal_chain": "Lower resolution raises the similarity threshold, merging clusters"
+      }
+    }
+  }
+}

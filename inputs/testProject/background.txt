@@ -1,0 +1,5 @@
+Human PBMC single-cell RNA-seq dataset from 10X Genomics.
+Sample: PBMC from healthy donor
+Sequencing: 10X Chromium 3' v3.1
+Cell number: ~10,000 cells
+Goal: Characterize immune cell populations

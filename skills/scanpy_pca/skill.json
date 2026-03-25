@@ -1,0 +1,52 @@
+{
+  "skill_id": "scanpy_pca",
+  "execution_layer": {
+    "code_template": "import scanpy as sc\nimport anndata as ad\nfrom datetime import datetime\nimport numpy as np\n\ndef run_pca(input_data, params_dict=None, default_params=None):\n    \"\"\"\n    Compute Principal Component Analysis on data.\n    \n    Memory-First: Accepts both file path (str) and AnnData object.\n    Parameter Safety: Uses default_params merged with agent_params.\n    Metadata Footprinting: Records execution to adata.uns['analysis_history'].\n    \n    Parameters:\n    ----------\n    input_data : str or AnnData\n        Path to AnnData file or AnnData object in memory\n    params_dict : dict, optional\n        Parameters from Agent (overrides defaults)\n    default_params : dict, optional\n        PCA parameters\n    \n    Returns:\n    --------\n    AnnData with PCA coordinates in obsm['X_pca']\n    \"\"\"\n    adata = input_data if isinstance(input_data, ad.AnnData) else sc.read(input_data)\n    \n    default_params = default_params or {\n        'n_comps': 50,\n        'zero_center': True,\n        'svd_solver': 'arpack',\n        'random_state': 42,\n        'use_highly_variable': True\n    }\n    agent_params = params_dict or {}\n    current_params = {**default_params, **agent_params}\n    \n    actual_n_comps = min(current_params.get('n_comps', 50), min(adata.n_vars, adata.n_obs) - 1)\n    if actual_n_comps < 1:\n        actual_n_comps = 1\n    \n    n_pcs_to_compute = actual_n_comps\n    \n    sc.tl.pca(\n        adata,\n        n_comps=n_pcs_to_compute,\n        zero_center=current_params.get('zero_center', True),\n        svd_solver=current_params.get('svd_solver', 'arpack'),\n        random_state=current_params.get('random_state', 42),\n        use_highly_variable=current_params.get('use_highly_variable', True),\n        inplace=True\n    )\n    \n    pca_var_explained = adata.uns['pca']['variance'] / adata.uns['pca']['variance'].sum() if 'pca' in adata.uns else np.array([])\n    cumsum_var = np.cumsum(pca_var_explained) if len(pca_var_explained) > 0 else np.array([])\n    \n    n_pcs_computed = adata.obsm['X_pca'].shape[1] if 'X_pca' in adata.obsm else 0\n    \n    if 'analysis_history' not in adata.uns:\n        adata.uns['analysis_history'] = []\n    \n    adata.uns['analysis_history'].append({\n        'skill_id': 'scanpy_pca',\n        'params': {**current_params, 'n_comps_actual': n_pcs_computed},\n        'metrics': {\n            'n_pcs': n_pcs_computed,\n            'var_explained_first_pc': float(pca_var_explained[0]) if len(pca_var_explained) > 0 else 0,\n            'var_explained_first_10': float(pca_var_explained[:10].sum()) if len(pca_var_explained) >= 10 else float(pca_var_explained.sum()),\n            'cumsum_var_10': float(cumsum_var[9]) if len(cumsum_var) >= 10 else float(cumsum_var[-1]),\n            'cumsum_var_50': float(cumsum_var[49]) if len(cumsum_var) >= 50 else float(cumsum_var[-1]),\n            'n_cells': adata.n_obs,\n            'n_genes': adata.n_vars\n        },\n        'timestamp': datetime.now().isoformat()\n    })\n    \n    return adata",
+    "required_inputs": ["input_data", "params_dict"],
+    "default_params": {
+      "n_comps": 50,
+      "zero_center": true,
+      "svd_solver": "arpack",
+      "random_state": 42,
+      "use_highly_variable": true
+    },
+    "output_objects": ["pca_adata"]
+  },
+  "cognitive_layer": {
+    "purpose": "PCA reduces dimensionality while preserving maximum variance. It transforms correlated variables into uncorrelated principal components, enabling noise reduction, visualization, and computational efficiency for downstream analysis.",
+    "parameter_impact": {
+      "n_comps": "Number of principal components to compute. More PCs preserve more information but increase noise. 50 is common for 10x data; fewer may miss subtle structure.",
+      "use_highly_variable": "When True, only uses highly variable genes for PCA. Reduces noise and focuses on informative variation."
+    }
+  },
+  "critic_layer": {
+    "metrics_to_extract": [
+      "n_pcs",
+      "var_explained_first_pc",
+      "var_explained_first_10",
+      "cumsum_var_10",
+      "cumsum_var_50"
+    ],
+    "success_thresholds": "n_pcs >= 10 and cumsum_var_50 > 0.5",
+    "context_params": ["protocol"],
+    "error_handling": {
+      "ValueError: n_comps must be <= min(n_vars, n_obs) - 1": "Reduce n_comps to be less than min(n_vars, n_obs) - 1.",
+      "MemoryError": "Reduce n_comps or use svd_solver='randomized' for large datasets."
+    },
+    "post_processing_code": "def critic_post_process(adata, context=None):\n    context = context or {}\n    protocol = context.get('protocol', '10x Genomics')\n    \n    thresholds = {\n        '10x Genomics': {'min_pcs': 10, 'min_var_50': 0.5},\n        'Smart-seq2': {'min_pcs': 20, 'min_var_50': 0.6},\n        'Drop-seq': {'min_pcs': 15, 'min_var_50': 0.5}\n    }\n    t = thresholds.get(protocol, thresholds['10x Genomics'])\n    \n    metrics = {}\n    warnings = []\n    \n    last_pca = None\n    for entry in reversed(adata.uns.get('analysis_history', [])):\n        if entry.get('skill_id') == 'scanpy_pca':\n            last_pca = entry\n            break\n    \n    if last_pca is None:\n        return {'metrics': {}, 'warnings': ['PCA not found in history'], 'success': False}\n    \n    metrics.update(last_pca.get('metrics', {}))\n    \n    n_pcs = metrics.get('n_pcs', 0)\n    cumsum_var_50 = metrics.get('cumsum_var_50', 0)\n    var_first_pc = metrics.get('var_explained_first_pc', 0)\n    \n    if n_pcs < t['min_pcs']:\n        warnings.append(f'TOO FEW PCS: Only {n_pcs} computed for {protocol} (expected >={t[\"min_pcs\"]}). May miss structure.')\n    \n    if cumsum_var_50 < t['min_var_50']:\n        warnings.append(f'LOW VARIANCE EXPLAINED: First 50 PCs explain only {cumsum_var_50*100:.1f}% of variance for {protocol} (expected >={t[\"min_var_50\"]*100:.0f}%).')\n    \n    if var_first_pc > 0.5:\n        warnings.append(f'FIRST PC DOMINANT: First PC explains {var_first_pc*100:.1f}% of variance. Possible strong batch effect or dominant cell population.')\n    \n    success = n_pcs >= t['min_pcs'] and cumsum_var_50 >= t['min_var_50']\n    \n    return {\n        'metrics': metrics,\n        'warnings': warnings,\n        'success': success,\n        'context_used': protocol\n    }"
+  },
+  "parameter_science_guide": {
+    "n_comps": {
+      "too_few_pcs": {
+        "adjust": "increase n_comps by 10-20",
+        "causal_chain": "More PCs capture more of the data's variance, preserving subtle structure for downstream analysis.",
+        "expected_effect": "Better representation of complex data, but more noise"
+      },
+      "too_many_pcs": {
+        "adjust": "decrease n_comps by 10-20",
+        "causal_chain": "Fewer PCs focus on the major structure and reduce noise, but may miss subtle patterns.",
+        "expected_effect": "Cleaner signal but potential loss of information"
+      }
+    }
+  }
+}

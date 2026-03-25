@@ -1,0 +1,48 @@
+{
+  "skill_id": "scanpy_scale",
+  "execution_layer": {
+    "code_template": "import scanpy as sc\nimport anndata as ad\nfrom datetime import datetime\n\ndef run_scale(input_data, params_dict=None, default_params=None):\n    \"\"\"\n    Scale data to unit variance and zero mean.\n    \n    Memory-First: Accepts both file path (str) and AnnData object.\n    Parameter Safety: Uses default_params merged with agent_params.\n    Metadata Footprinting: Records execution to adata.uns['analysis_history'].\n    \n    Parameters:\n    ----------\n    input_data : str or AnnData\n        Path to AnnData file or AnnData object in memory\n    params_dict : dict, optional\n        Parameters from Agent (overrides defaults)\n    default_params : dict, optional\n        Scaling parameters\n    \n    Returns:\n    --------\n    AnnData with scaled expression values\n    \"\"\"\n    adata = input_data if isinstance(input_data, ad.AnnData) else sc.read(input_data)\n    \n    default_params = default_params or {\n        'zero_center': True,\n        'max_value': 10.0,\n        'copy': False\n    }\n    agent_params = params_dict or {}\n    current_params = {**default_params, **agent_params}\n    \n    before_scale_std = float(adata.X[:100].std())\n    \n    sc.pp.scale(\n        adata,\n        zero_center=current_params.get('zero_center', True),\n        max_value=current_params.get('max_value', 10.0),\n        inplace=True\n    )\n    \n    after_scale_std = float(adata.X[:100].std())\n    \n    if 'analysis_history' not in adata.uns:\n        adata.uns['analysis_history'] = []\n    \n    adata.uns['analysis_history'].append({\n        'skill_id': 'scanpy_scale',\n        'params': current_params,\n        'metrics': {\n            'before_scale_std': before_scale_std,\n            'after_scale_std': after_scale_std,\n            'max_value': current_params.get('max_value', 10.0),\n            'zero_center': current_params.get('zero_center', True)\n        },\n        'timestamp': datetime.now().isoformat()\n    })\n    \n    return adata",
+    "required_inputs": ["input_data", "params_dict"],
+    "default_params": {
+      "zero_center": true,
+      "max_value": 10.0
+    },
+    "output_objects": ["scaled_adata"]
+  },
+  "cognitive_layer": {
+    "purpose": "Scaling transforms genes to have zero mean and unit variance, preventing highly expressed genes from dominating PCA and other analyses. This ensures all genes contribute equally to distance calculations. Max value clipping prevents outliers from distorting the distribution.",
+    "parameter_impact": {
+      "max_value": "Truncates values after scaling. 10 is common (about 10x standard deviations). Lower values compress the range more; higher values preserve more variation.",
+      "zero_center": "When True, subtracts mean before scaling. Required for PCA which expects centered data. When False, preserves sparsity for sparse matrices."
+    }
+  },
+  "critic_layer": {
+    "metrics_to_extract": [
+      "before_scale_std",
+      "after_scale_std",
+      "max_value",
+      "zero_center"
+    ],
+    "success_thresholds": "after_scale_std > 0.5 and after_scale_std < 2.0",
+    "context_params": [],
+    "error_handling": {
+      "ValueError: X has NaN": "Data contains NaN values. Check for zero-variance genes or previous transformations that produced NaN.",
+      "MemoryError": "For large datasets, consider setting max_value to clip extreme values and reduce memory usage."
+    },
+    "post_processing_code": "def critic_post_process(adata, context=None):\n    context = context or {}\n    \n    metrics = {}\n    warnings = []\n    \n    last_scale = None\n    for entry in reversed(adata.uns.get('analysis_history', [])):\n        if entry.get('skill_id') == 'scanpy_scale':\n            last_scale = entry\n            break\n    \n    if last_scale is None:\n        return {'metrics': {}, 'warnings': ['scanpy_scale not found in history'], 'success': False}\n    \n    metrics.update(last_scale.get('metrics', {}))\n    after_scale_std = metrics.get('after_scale_std', 0)\n    \n    if after_scale_std < 0.5:\n        warnings.append(f'LOW VARIANCE: Standard deviation is {after_scale_std:.3f}, expected ~1.0 after scaling. Data may be too homogeneous.')\n    \n    if after_scale_std > 2.0:\n        warnings.append(f'HIGH VARIANCE: Standard deviation is {after_scale_std:.3f}, expected ~1.0. max_value clipping may be too high.')\n    \n    success = 0.5 <= after_scale_std <= 2.0\n    \n    return {\n        'metrics': metrics,\n        'warnings': warnings,\n        'success': success,\n        'context_used': 'default'\n    }"
+  },
+  "parameter_science_guide": {
+    "max_value": {
+      "outliers_dominant": {
+        "adjust": "reduce max_value to 5 or 3",
+        "causal_chain": "max_value truncates extreme values. Lower values compress the range, reducing the influence of outliers on downstream analysis.",
+        "expected_effect": "Less extreme values, more balanced contribution from all genes"
+      },
+      "compression_excessive": {
+        "adjust": "increase max_value to 15 or 20",
+        "causal_chain": "Higher max_value preserves more of the original variation, allowing highly expressed genes to have stronger influence.",
+        "expected_effect": "Greater dynamic range preserved"
+      }
+    }
+  }
+}
