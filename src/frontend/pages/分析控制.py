@@ -82,18 +82,24 @@ def render(session_state):
                                 st.session_state.selected_steps.add(i)
 
                 with col2:
+                    step_name = step.get('name') or step.get('skill_id', f'Step {i+1}')
                     status = step.get("status")
                     if status == "completed":
-                        st.write(f"~~{step['name']}~~ ✅")
+                        st.write(f"~~{step_name}~~ ✅")
                     elif status == "failed":
-                        st.write(f"~~{step['name']}~~ ❌")
+                        st.write(f"~~{step_name}~~ ❌")
                         st.caption(f"Skill: {step.get('skill_id', 'N/A')}")
+                        if step.get('reasoning'):
+                            st.caption(f"原因: {step['reasoning'][:80]}")
                     elif i in st.session_state.selected_steps:
-                        st.write(f"**{step['name']}**")
+                        st.write(f"**{step_name}**")
                         st.caption(f"Skill: {step.get('skill_id', 'N/A')}")
+                        if step.get('reasoning'):
+                            st.caption(f"推理: {step['reasoning'][:80]}")
+                        if step.get('expected_outcome'):
+                            st.caption(f"预期: {step['expected_outcome'][:80]}")
                     else:
-                        st.write(f"~~{step['name']}~~ (已跳过)")
-                        st.caption(f"Skill: {step.get('skill_id', 'N/A')}")
+                        st.write(f"~~{step_name}~~ (已跳过)")
 
             st.divider()
 
@@ -133,18 +139,19 @@ def render(session_state):
                         if i not in selected:
                             continue
 
-                        status_text.text(f"正在执行: {step['name']}")
+                        step_name = step.get('name') or step.get('skill_id', f'Step {i+1}')
+                        status_text.text(f"正在执行: {step_name}")
                         progress_bar.progress((len(results_summary) + 1) / max(selected_count, 1))
 
                         result = agent.execute_step(step)
                         st.session_state.analysis_plan[i]["status"] = "completed" if result.observation.get("success") else "failed"
 
                         if not result.observation.get("success"):
-                            st.error(f"❌ {step['name']}: {str(result.observation.get('error', 'Unknown error'))[:80]}")
-                            results_summary.append({"step": step['name'], "status": "failed", "error": str(result.observation.get('error', ''))[:100]})
+                            st.error(f"❌ {step_name}: {str(result.observation.get('error', 'Unknown error'))[:80]}")
+                            results_summary.append({"step": step_name, "status": "failed", "error": str(result.observation.get('error', ''))[:100]})
                         else:
-                            results_summary.append({"step": step['name'], "status": "completed"})
-                            agent.save_checkpoint(step['name'])
+                            results_summary.append({"step": step_name, "status": "completed"})
+                            agent.save_checkpoint(step_name)
 
                         time.sleep(0.5)
 

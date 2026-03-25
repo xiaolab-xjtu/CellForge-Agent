@@ -115,7 +115,11 @@ On failure:
                 logger.warning("LLM response empty or API not configured, using fallback")
                 return self._fallback_fixed_plan()
 
-            plan = json.loads(response)
+            plan = self._parse_json_response(response)
+            if plan is None:
+                logger.warning("Could not parse LLM response as JSON, using fallback")
+                return self._fallback_fixed_plan()
+
             validated_plan = self._validate_and_enrich_plan(plan)
 
             if validated_plan:
@@ -128,6 +132,53 @@ On failure:
         except (json.JSONDecodeError, TypeError) as e:
             logger.warning("Failed to parse LLM response: %s, using fallback", e)
             return self._fallback_fixed_plan()
+
+    def _parse_json_response(self, response: str) -> list | None:
+        """Parse JSON from LLM response, handling common issues."""
+        if not response:
+            return None
+
+        response = response.strip()
+
+        json_start = response.find('[')
+        json_end = response.rfind(']')
+
+        if json_start == -1 or json_end == -1 or json_end < json_start:
+            logger.warning("No JSON array found in response")
+            return None
+
+        json_str = response[json_start:json_end + 1]
+
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.warning("Initial JSON parse failed: %s, attempting repair", e)
+
+        try:
+            repaired = self._repair_json(json_str)
+            return json.loads(repaired)
+        except json.JSONDecodeError:
+            return None
+
+    def _repair_json(self, json_str: str) -> str:
+        """Attempt to repair malformed JSON."""
+        repaired = json_str
+
+        lines = repaired.split('\n')
+        repaired_lines = []
+        for line in lines:
+            stripped = line.rstrip()
+            if stripped.endswith(',') or stripped.endswith(';'):
+                repaired_lines.append(stripped[:-1])
+            else:
+                repaired_lines.append(stripped)
+
+        repaired = '\n'.join(repaired_lines)
+
+        if repaired.startswith('[') and not repaired.endswith(']'):
+            repaired = repaired + ']'
+
+        return repaired
 
     def _build_user_prompt(
         self,
