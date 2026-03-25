@@ -149,6 +149,9 @@ class SkillExecutor:
             "output_data": None,
         }
 
+        import datetime as dt
+        import numpy as np
+
         exec_globals = {
             "anndata": ad,
             "ad": ad,
@@ -158,6 +161,8 @@ class SkillExecutor:
             "plt": plt,
             "matplotlib": matplotlib,
             "pd": pd,
+            "datetime": dt,
+            "np": np,
         }
 
         exec(code_template, exec_globals, local_vars)
