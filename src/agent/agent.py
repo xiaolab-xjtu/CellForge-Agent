@@ -380,6 +380,22 @@ class ReActAgent:
                 observation={"success": False, "error": "No skill_id"},
             )
 
+        if self._registry.get_skill_spec(skill_id) is None:
+            logger.warning(f"Skill {skill_id} not found, trying fuzzy match for '{step_name}'")
+            matched = self._registry.fuzzy_match_skill(step_name)
+            if matched:
+                logger.info(f"Fuzzy matched '{step_name}' to '{matched}'")
+                skill_id = matched
+            else:
+                logger.error(f"No skill found for step: {step_name}")
+                return StepRecord(
+                    step=self._iteration,
+                    thought=thought,
+                    skill_id=None,
+                    action=f"Skipped {step_name} - skill not found",
+                    observation={"success": False, "error": f"Skill not found for step: {step_name}"},
+                )
+
         execution_result = self._executor.execute(
             skill_id=skill_id,
             input_data=self._adata,

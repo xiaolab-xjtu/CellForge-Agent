@@ -30,6 +30,8 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -289,6 +291,160 @@ class SkillRegistry:
             f"SkillRegistry(root={self._skills_root}, "
             f"skills={len(self)}, initialized={self._initialized})"
         )
+
+    def _normalize_name(self, name: str) -> str:
+        """Normalize skill name: replace hyphens with underscores and lowercase."""
+        return name.replace("-", "_").replace(" ", "_").lower()
+
+    def check_skill_id_consistency(self) -> list[dict[str, Any]]:
+        """
+        Check if folder names match the skill_id in skill.json.
+
+        Returns:
+            list of issues found, each dict contains:
+            - folder: actual folder name
+            - skill_id: skill_id from skill.json
+            - issue: description of the problem
+            - fix: suggested fix
+        """
+        issues = []
+        if not self._initialized:
+            self.scan()
+
+        for skill_id, entry in self._index.items():
+            folder_name = entry.file_path.parent.name
+            if self._normalize_name(skill_id) != self._normalize_name(folder_name):
+                issues.append({
+                    "folder": folder_name,
+                    "skill_id": skill_id,
+                    "issue": "Folder name does not match skill_id",
+                    "fix": f"Rename folder to '{skill_id}' or change skill_id in skill.json"
+                })
+
+        return issues
+
+    def fuzzy_match_skill(self, step_name: str) -> str | None:
+        """
+        Match a step name to an available skill using fuzzy matching.
+
+        Args:
+            step_name: The step name to match (e.g., 'clustering', 'DEG_analysis')
+
+        Returns:
+            Matching skill_id or None if no match found.
+        """
+        if not self._initialized:
+            self.scan()
+
+        step_norm = self._normalize_name(step_name)
+
+        STEP_KEYWORDS = {
+            "qc": ["qc", "filter", "quality"],
+            "filter_cells": ["filter_cells", "filter", "qc"],
+            "normalization": ["normalize", "normalization", "log1p"],
+            "hvg": ["hvg", "highly_variable", "variable_genes"],
+            "scaling": ["scale", "scaling"],
+            "pca": ["pca"],
+            "neighbors": ["neighbors", "neighbor"],
+            "clustering": ["leiden", "cluster", "louvain"],
+            "umap": ["umap"],
+            "batch_correction": ["batch", "harmony", "batch_correction"],
+            "cell_annotation": ["celltypist", "annotate", "cell_annotation", "annotation"],
+            "deg_analysis": ["rank_genes", "deg", "differential", "markers"],
+            "trajectory": ["trajectory", "paga", "dpt", "pseudotime"],
+        }
+
+        keywords = STEP_KEYWORDS.get(step_norm, [step_norm])
+
+        for skill_id in self._index:
+            skill_norm = self._normalize_name(skill_id)
+            for kw in keywords:
+                if kw in skill_norm or skill_norm in kw:
+                    logger.info(f"Fuzzy matched '{step_name}' to '{skill_id}'")
+                    return skill_id
+
+        logger.warning(f"No fuzzy match found for step: '{step_name}'")
+        return None
+
+    def validate_all(self) -> dict[str, Any]:
+        """
+        Run all validation checks and return a report.
+
+        Returns:
+            dict with:
+            - skill_id_mismatches: folder/skill_id consistency issues
+            - available_skills: list of all registered skill_ids
+            - missing_essential: steps without matching skills
+        """
+        if not self._initialized:
+            self.scan()
+
+        report = {
+            "skill_id_mismatches": self.check_skill_id_consistency(),
+            "available_skills": list(self._index.keys()),
+            "missing_essential": [],
+        }
+
+        ESSENTIAL_STEPS = [
+            "qc", "filter_cells", "normalization", "hvg", "scaling",
+            "pca", "neighbors", "clustering", "umap", "deg_analysis"
+        ]
+
+        for step in ESSENTIAL_STEPS:
+            matched = self.fuzzy_match_skill(step)
+            if not matched:
+                report["missing_essential"].append(step)
+
+        return report
+
+    def auto_fix(self, dry_run: bool = True) -> dict[str, Any]:
+        """
+        Automatically fix naming inconsistencies.
+
+        Args:
+            dry_run: If True, only report fixes without executing them.
+
+        Returns:
+            dict with:
+            - fixes_applied: list of fixes applied or planned
+            - errors: any errors encountered
+        """
+        if not self._initialized:
+            self.scan()
+
+        fixes = []
+        errors = []
+
+        issues = self.check_skill_id_consistency()
+        for issue in issues:
+            old_folder = issue["folder"]
+            new_folder = issue["skill_id"]
+            old_path = self._skills_root / old_folder
+            new_path = self._skills_root / new_folder
+
+            if dry_run:
+                fixes.append({
+                    "type": "rename_folder",
+                    "from": str(old_path),
+                    "to": str(new_path),
+                    "status": "planned"
+                })
+            else:
+                try:
+                    shutil.move(str(old_path), str(new_path))
+                    logger.info(f"Renamed {old_folder} to {new_folder}")
+                    fixes.append({
+                        "type": "rename_folder",
+                        "from": str(old_path),
+                        "to": str(new_path),
+                        "status": "applied"
+                    })
+                    self._index[new_folder] = self._index.pop(old_folder)
+                except Exception as e:
+                    logger.error(f"Failed to rename {old_folder}: {e}")
+                    errors.append({"folder": old_folder, "error": str(e)})
+
+        return {"fixes": fixes, "errors": errors}
 
 
 if __name__ == "__main__":

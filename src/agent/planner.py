@@ -51,9 +51,9 @@ class AnalysisPlanner:
     ]
 
     SKILL_MAPPING = {
-        "QC": "scanpy_filter_cells",
-        "filter_cells": "scanpy_filter_cells",
-        "filter_genes": "scanpy_filter_genes",
+        "QC": "scanpy_qc",
+        "filter_cells": "scanpy_qc",
+        "filter_genes": "scanpy_qc",
         "normalization": "scanpy_normalize",
         "normalize_total": "scanpy_normalize",
         "log1p": "scanpy_normalize",
@@ -63,20 +63,19 @@ class AnalysisPlanner:
         "scale": "scanpy_scale",
         "PCA": "scanpy_pca",
         "pca": "scanpy_pca",
-        "batch_correction": "sc_batch_correction",
+        "batch_correction": "harmony_batch",
         "neighbors": "scanpy_neighbors",
-        "neighbors": "scanpy_neighbors",
-        "clustering": "scanpy_cluster",
-        "leiden": "scanpy_cluster",
-        "louvain": "scanpy_cluster",
+        "clustering": "scanpy_leiden",
+        "leiden": "scanpy_leiden",
+        "louvain": "scanpy_leiden",
         "UMAP": "scanpy_umap",
         "umap": "scanpy_umap",
-        "cell_annotation": "sc_cell_annotation",
-        "DEG_analysis": "scanpy_deg",
-        "rank_genes_groups": "scanpy_deg",
-        "trajectory_analysis": "scanpy_trajectory",
-        "paga": "scanpy_trajectory",
-        "dpt": "scanpy_trajectory",
+        "cell_annotation": "celltypist_annotate",
+        "DEG_analysis": "scanpy_rank_genes",
+        "rank_genes_groups": "scanpy_rank_genes",
+        "trajectory_analysis": None,
+        "paga": None,
+        "dpt": None,
     }
 
     def __init__(self) -> None:

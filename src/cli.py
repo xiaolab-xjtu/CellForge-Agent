@@ -116,6 +116,16 @@ Examples:
         action="store_true",
         help="Enable verbose logging",
     )
+    parser.add_argument(
+        "--validate-skills",
+        action="store_true",
+        help="Validate skills and check for issues",
+    )
+    parser.add_argument(
+        "--fix-skills",
+        action="store_true",
+        help="Automatically fix skill issues (use with --validate-skills)",
+    )
 
     return parser
 
@@ -285,6 +295,58 @@ def cmd_run(args: argparse.Namespace) -> None:
     print(f"\nOutputs directory: {args.output_dir / args.project}")
 
 
+def cmd_validate_skills(args: argparse.Namespace) -> None:
+    """Validate skills and check for issues."""
+    from scAgent_v2.src.agent.registry import SkillRegistry
+
+    registry = SkillRegistry(args.skills_root)
+    count = registry.scan()
+
+    print(f"\n{'='*60}")
+    print("scAgent_v2 Skill Validation Report")
+    print(f"{'='*60}")
+    print(f"\nSkills root: {args.skills_root}")
+    print(f"Total skills: {count}\n")
+
+    report = registry.validate_all()
+
+    if report["skill_id_mismatches"]:
+        print("❌ Skill ID Mismatches:")
+        for issue in report["skill_id_mismatches"]:
+            print(f"   Folder: {issue['folder']}")
+            print(f"   skill_id: {issue['skill_id']}")
+            print(f"   Fix: {issue['fix']}\n")
+    else:
+        print("✓ All skill IDs match folder names")
+
+    if report["missing_essential"]:
+        print("\n⚠️ Missing Essential Skills:")
+        for step in report["missing_essential"]:
+            print(f"   - {step}")
+    else:
+        print("\n✓ All essential skills are available")
+
+    print(f"\nAvailable Skills:")
+    for skill_id in sorted(report["available_skills"]):
+        print(f"   - {skill_id}")
+
+    if args.fix_skills:
+        print(f"\n{'='*60}")
+        print("Applying fixes...")
+        result = registry.auto_fix(dry_run=False)
+        if result["fixes"]:
+            print(f"Applied {len(result['fixes'])} fixes:")
+            for fix in result["fixes"]:
+                print(f"   - {fix['from']} -> {fix['to']}")
+        if result["errors"]:
+            print(f"Errors:")
+            for err in result["errors"]:
+                print(f"   - {err}")
+    else:
+        print(f"\n{'='*60}")
+        print("To auto-fix issues, run with --fix-skills")
+
+
 def main() -> None:
     """Main entry point."""
     parser = create_parser()
@@ -297,6 +359,8 @@ def main() -> None:
         cmd_list_skills(args)
     elif args.demo:
         cmd_demo(args)
+    elif args.validate_skills:
+        cmd_validate_skills(args)
     elif args.run:
         cmd_run(args)
     else:
