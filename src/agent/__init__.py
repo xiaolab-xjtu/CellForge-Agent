@@ -12,7 +12,7 @@ from scAgent_v2.src.agent.validator import (
     ResultValidator,
 )
 from scAgent_v2.src.agent.data_checker import DataConsistencyChecker
-from scAgent_v2.src.agent.planner import AnalysisPlanner
+from scAgent_v2.src.agent.planner import AnalysisPlanner, LLMPlanner
 from scAgent_v2.src.agent.deep_research import DeepResearchEngine, DeepResearchResult
 from scAgent_v2.src.agent.reporter import Reporter
 
@@ -32,6 +32,7 @@ __all__ = [
     "ResultValidator",
     "DataConsistencyChecker",
     "AnalysisPlanner",
+    "LLMPlanner",
     "DeepResearchEngine",
     "DeepResearchResult",
     "Reporter",

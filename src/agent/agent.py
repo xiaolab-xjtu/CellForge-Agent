@@ -77,7 +77,7 @@ class ReActAgent:
         from scAgent_v2.src.agent.memory import AgentMemory
         from scAgent_v2.src.agent.validator import ResultValidator
         from scAgent_v2.src.agent.data_checker import DataConsistencyChecker
-        from scAgent_v2.src.agent.planner import AnalysisPlanner
+        from scAgent_v2.src.agent.planner import AnalysisPlanner, LLMPlanner
         from scAgent_v2.src.core.api_client import APIClient
 
         self.config = config or AgentConfig()
@@ -97,6 +97,11 @@ class ReActAgent:
         self._validator = ResultValidator(api_client=self._api_client)
         self._data_checker = DataConsistencyChecker()
         self._planner = AnalysisPlanner()
+        self._llm_planner = LLMPlanner(
+            api_client=self._api_client,
+            registry=self._registry,
+            max_retries=self.config.max_retries,
+        )
 
         self._adata: Any = None
         self._steps: list[StepRecord] = []
@@ -243,7 +248,7 @@ class ReActAgent:
         user_config: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Create analysis plan based on context.
+        Create analysis plan based on context using LLM.
 
         Args:
             existing_analysis: Types of existing analysis in data.
@@ -252,11 +257,16 @@ class ReActAgent:
         Returns:
             List of step dicts.
         """
-        self._plan = self._planner.create_plan(
+        data_state = {
+            "n_cells": self._adata.n_obs if self._adata is not None else 0,
+            "n_genes": self._adata.n_vars if self._adata is not None else 0,
+            "existing_types": existing_analysis.get("types", []) if existing_analysis else [],
+        }
+
+        self._plan = self._llm_planner.create_initial_plan(
             background=self._background,
             research=self._research,
-            existing_analysis=existing_analysis,
-            user_config=user_config,
+            data_state=data_state,
         )
 
         logger.info("Created plan with %d steps", len(self._plan))
@@ -438,6 +448,58 @@ class ReActAgent:
         self._steps.append(step_record)
         return step_record
 
+    def execute_step_with_retry(
+        self,
+        step: dict[str, Any],
+    ) -> StepRecord:
+        """
+        Execute a step with retry logic on failure.
+
+        Args:
+            step: Step dict with skill_id, initial_params, etc.
+
+        Returns:
+            StepRecord with final execution result.
+        """
+        current_step = step.copy()
+        attempt = 0
+        last_error = None
+
+        while attempt < self._llm_planner.max_retries:
+            step_record = self.execute_step(current_step)
+
+            if step_record.observation.get("success"):
+                return step_record
+
+            last_error = step_record.observation.get("error", "Unknown error")
+            logger.warning(
+                "Step %d failed (attempt %d/%d): %s",
+                step["step_id"],
+                attempt + 1,
+                self._llm_planner.max_retries,
+                last_error,
+            )
+
+            skill_spec = self._registry.get_skill_spec(current_step.get("skill_id", ""))
+            if not skill_spec:
+                logger.error("Could not get skill spec for %s", current_step.get("skill_id"))
+                break
+
+            adjusted = self._llm_planner.adjust_on_failure(
+                current_step, last_error, skill_spec, attempt
+            )
+
+            if adjusted is None:
+                logger.info("Cannot adjust step %d, will backtrack", step["step_id"])
+                break
+
+            current_step = adjusted
+            attempt += 1
+
+        step_record.observation["retry_attempts"] = attempt
+        step_record.observation["final_error"] = last_error
+        return step_record
+
     def run_pipeline(
         self,
         skill_sequence: list[tuple[str, dict[str, Any] | None, dict[str, Any] | None]]
@@ -464,7 +526,7 @@ class ReActAgent:
                     break
         elif self._plan:
             for step in self._plan:
-                self.execute_step(step)
+                self.execute_step_with_retry(step)
 
                 if self._iteration >= self.config.max_iterations:
                     logger.warning(
@@ -514,7 +576,7 @@ class ReActAgent:
             if step.get("status") == "skipped":
                 continue
 
-            step_result = self.execute_step(step)
+            step_result = self.execute_step_with_retry(step)
 
             if step_result.observation.get("success"):
                 results["steps_completed"] += 1
