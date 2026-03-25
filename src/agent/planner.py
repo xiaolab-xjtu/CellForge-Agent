@@ -213,17 +213,21 @@ On failure:
 # Task
 Generate a JSON analysis plan as an array of steps. Each step must have:
 - step_id (integer)
+- name (string, human-readable step name like "QC Filtering")
 - skill_id (must be from the Available Skills list above)
-- reasoning (string explaining why this skill)
+- reasoning (string explaining why this skill, max 50 chars)
 - initial_params (object with parameters, include make_plot=True for QC/clustering/DEG)
-- expected_outcome (string with biological metrics for verification)
+- expected_outcome (string with biological metrics for verification, max 50 chars)
+
+IMPORTANT: Keep reasoning and expected_outcome under 50 characters each.
+To prevent output truncation, output maximum 5 steps at a time.
 
 Example format:
 [
-  {{"step_id": 1, "skill_id": "scanpy_qc", "reasoning": "...", "initial_params": {{"min_genes": 200, "make_plot": true}}, "expected_outcome": "cell_removal_rate < 30%"}}
+  {{"step_id": 1, "name": "QC Filtering", "skill_id": "scanpy_qc", "reasoning": "Filter low-quality cells", "initial_params": {{"min_genes": 200, "make_plot": true}}, "expected_outcome": "cell_removal_rate < 30%"}}
 ]
 
-Respond ONLY with valid JSON array, no other text."""
+Respond ONLY with valid JSON array, no other text. Start with step 1."""
         return prompt
 
     def _validate_and_enrich_plan(self, plan: Any) -> list[dict[str, Any]] | None:
@@ -238,9 +242,14 @@ Respond ONLY with valid JSON array, no other text."""
                 logger.warning("Step %d is not a dict: %s", i, type(step))
                 continue
 
+            skill_id = step.get("skill_id", "")
+            step_id = step.get("step_id", i + 1)
+            name = step.get("name") or skill_id.replace("_", " ").title() or f"Step {step_id}"
+
             validated_step = {
-                "step_id": step.get("step_id", i + 1),
-                "skill_id": step.get("skill_id"),
+                "step_id": step_id,
+                "name": name,
+                "skill_id": skill_id,
                 "reasoning": step.get("reasoning", ""),
                 "initial_params": step.get("initial_params", {}),
                 "expected_outcome": step.get("expected_outcome", ""),
@@ -262,66 +271,75 @@ Respond ONLY with valid JSON array, no other text."""
         return [
             {
                 "step_id": 1,
+                "name": "QC Filtering",
                 "skill_id": "scanpy_qc",
-                "reasoning": "Standard QC filtering for low-quality cells",
+                "reasoning": "Filter low-quality cells",
                 "initial_params": {"min_genes": 200, "min_cells": 3, "max_mito_pct": 20.0, "make_plot": True},
-                "expected_outcome": "cell_removal_rate < 30%, n_cells_after > 1000",
+                "expected_outcome": "cell_removal_rate < 30%",
             },
             {
                 "step_id": 2,
+                "name": "Normalization",
                 "skill_id": "scanpy_normalize",
-                "reasoning": "Normalize expression for comparability",
+                "reasoning": "Normalize for comparability",
                 "initial_params": {"target_sum": 10000, "make_plot": False},
-                "expected_outcome": "total_counts normalized, X stored in adata.X",
+                "expected_outcome": "total_counts normalized",
             },
             {
                 "step_id": 3,
+                "name": "HVG Selection",
                 "skill_id": "scanpy_hvg",
-                "reasoning": "Select highly variable genes to reduce noise",
+                "reasoning": "Select variable genes",
                 "initial_params": {"n_top_genes": 2000, "make_plot": False},
-                "expected_outcome": "2000 HVGs selected, stored in adata.var",
+                "expected_outcome": "2000 HVGs selected",
             },
             {
                 "step_id": 4,
+                "name": "Scaling",
                 "skill_id": "scanpy_scale",
-                "reasoning": "Scale data to prevent gene dominance",
+                "reasoning": "Scale to prevent dominance",
                 "initial_params": {"max_value": 10, "make_plot": False},
-                "expected_outcome": "Data scaled, zero mean, unit variance",
+                "expected_outcome": "Data scaled",
             },
             {
                 "step_id": 5,
+                "name": "PCA",
                 "skill_id": "scanpy_pca",
-                "reasoning": "Reduce dimensionality for downstream analysis",
+                "reasoning": "Reduce dimensionality",
                 "initial_params": {"n_comps": 50, "make_plot": True},
-                "expected_outcome": "X_pca in adata.obsm, 50 components",
+                "expected_outcome": "X_pca in adata.obsm",
             },
             {
                 "step_id": 6,
+                "name": "Neighbors",
                 "skill_id": "scanpy_neighbors",
-                "reasoning": "Build neighbor graph for clustering",
+                "reasoning": "Build neighbor graph",
                 "initial_params": {"n_neighbors": 15, "make_plot": False},
-                "expected_outcome": "neighbors graph in adata.uns",
+                "expected_outcome": "neighbors graph built",
             },
             {
                 "step_id": 7,
+                "name": "Leiden Clustering",
                 "skill_id": "scanpy_leiden",
-                "reasoning": "Cluster cells to identify populations",
+                "reasoning": "Cluster cells",
                 "initial_params": {"resolution": 0.5, "make_plot": True},
-                "expected_outcome": "leiden in adata.obs, clusters identified",
+                "expected_outcome": "leiden in adata.obs",
             },
             {
                 "step_id": 8,
+                "name": "UMAP",
                 "skill_id": "scanpy_umap",
-                "reasoning": "2D visualization of cell populations",
+                "reasoning": "2D visualization",
                 "initial_params": {"min_dist": 0.5, "make_plot": True},
-                "expected_outcome": "X_umap in adata.obsm, 2D coordinates",
+                "expected_outcome": "X_umap in adata.obsm",
             },
             {
                 "step_id": 9,
+                "name": "DEG Analysis",
                 "skill_id": "scanpy_rank_genes",
-                "reasoning": "Find marker genes for each cluster",
+                "reasoning": "Find marker genes",
                 "initial_params": {"groupby": "leiden", "method": "t-test", "make_plot": True},
-                "expected_outcome": "rank_genes_groups in adata.uns, marker genes identified",
+                "expected_outcome": "marker genes identified",
             },
         ]
 
