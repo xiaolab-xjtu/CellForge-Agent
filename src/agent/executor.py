@@ -126,27 +126,60 @@ class SkillExecutor:
         """
         import anndata as ad
         import scanpy as sc
+        import os
+        import sys
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
 
         adata = input_data
         if isinstance(input_data, str | Path):
             adata = sc.read(input_data)
 
+        output_dir_str = str(output_dir) if output_dir else None
+
         local_vars = {
             "input_data": adata,
             "params_dict": params,
             "context": context,
-            "output_dir": str(output_dir) if output_dir else None,
+            "output_dir": output_dir_str,
+            "result": None,
+            "adata": None,
+            "output_data": None,
         }
 
         exec_globals = {
             "anndata": ad,
             "ad": ad,
             "sc": sc,
+            "os": os,
+            "sys": sys,
+            "plt": plt,
+            "matplotlib": matplotlib,
         }
 
         exec(code_template, exec_globals, local_vars)
 
-        return local_vars.get("result") or local_vars.get("adata") or local_vars.get("output_data")
+        if local_vars.get("result") is not None:
+            return local_vars["result"]
+        if local_vars.get("adata") is not None:
+            return local_vars["adata"]
+        if local_vars.get("output_data") is not None:
+            return local_vars["output_data"]
+
+        for key, value in local_vars.items():
+            if key.startswith("run_") and callable(value):
+                result = value(
+                    input_data=adata,
+                    params_dict=params,
+                    default_params=None,
+                    output_dir=output_dir_str,
+                )
+                if result is not None:
+                    local_vars["result"] = result
+                    return result
+
+        return adata
 
     def _extract_metrics(
         self,

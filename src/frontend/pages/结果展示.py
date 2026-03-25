@@ -4,6 +4,7 @@ Result Display Page
 import streamlit as st
 from pathlib import Path
 import base64
+import pandas as pd
 
 
 def render(session_state):
@@ -19,7 +20,7 @@ def render(session_state):
     if not session_state.analysis_complete:
         st.info("分析尚未完成，请在分析控制页面执行分析")
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 数据统计", "🖼️ 图表", "📝 报告", "💾 下载"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 数据统计", "🖼️ 图表", "📋 表格", "📝 报告", "💾 下载"])
 
     with tab1:
         st.subheader("数据概况")
@@ -89,6 +90,35 @@ def render(session_state):
             st.info("图表目录不存在 (分析完成后将自动创建)")
 
     with tab3:
+        st.subheader("生成的表格")
+
+        tables_dir = output_path / "Tables"
+        if tables_dir.exists():
+            table_files = list(tables_dir.glob("*.csv"))
+
+            if table_files:
+                selected_table = st.selectbox(
+                    "选择表格",
+                    [f.name for f in table_files]
+                )
+
+                table_path = tables_dir / selected_table
+                df = pd.read_csv(table_path)
+                st.dataframe(df)
+
+                with open(table_path, 'r', encoding='utf-8') as f:
+                    st.download_button(
+                        "下载此表格",
+                        f.read(),
+                        file_name=selected_table,
+                        mime="text/csv"
+                    )
+            else:
+                st.info("暂无表格")
+        else:
+            st.info("表格目录不存在 (分析完成后将自动创建)")
+
+    with tab4:
         st.subheader("分析报告")
 
         report_files = list((output_path / "reports").glob("*.md")) if (output_path / "reports").exists() else []
@@ -112,7 +142,7 @@ def render(session_state):
         else:
             st.info("暂无报告 (可点击聊天交互生成)")
 
-    with tab4:
+    with tab5:
         st.subheader("下载文件")
 
         col1, col2 = st.columns(2)
