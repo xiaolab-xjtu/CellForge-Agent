@@ -169,12 +169,22 @@ class SkillExecutor:
 
         for key, value in local_vars.items():
             if key.startswith("run_") and callable(value):
-                result = value(
-                    input_data=adata,
-                    params_dict=params,
-                    default_params=None,
-                    output_dir=output_dir_str,
-                )
+                try:
+                    result = value(
+                        input_data=adata,
+                        params_dict=params,
+                        default_params=None,
+                        output_dir=output_dir_str,
+                    )
+                except TypeError as e:
+                    if "output_dir" in str(e):
+                        result = value(
+                            input_data=adata,
+                            params_dict=params,
+                            default_params=None,
+                        )
+                    else:
+                        raise
                 if result is not None:
                     local_vars["result"] = result
                     return result
