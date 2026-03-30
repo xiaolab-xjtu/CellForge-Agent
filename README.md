@@ -1,186 +1,319 @@
 # CellForge Agent
 
-单细胞转录组分析智能体 (Single-cell Analysis Agent)，基于 **ReAct+Skill** 架构。
+> A single-cell transcriptomics analysis agent built on a **ReAct + Skill** architecture, designed for `.h5ad` workflows with traceable execution and report generation.
 
-## 核心特性
+## Table of Contents
 
-- **Skill 驱动架构**: 通过 SkillRegistry 管理和执行预定义的技能模块
-- **ReAct+Skill Loop**: 思考 → 行动 → 观测 → 评价 → 调整
-- **自我纠错**: 基于 Critic 反馈自动调整参数
-- **Lazy Loading**: 技能按需加载，减少内存占用
-- **动态注册**: 支持 sc-skill-creator 实时创建新技能
+- [1. Overview](#1-overview)
+- [2. Key Features](#2-key-features)
+- [3. Repository Structure](#3-repository-structure)
+- [4. Quick Start (5 Minutes)](#4-quick-start-5-minutes)
+- [5. Installation and Environment](#5-installation-and-environment)
+- [6. Inputs and Project Layout](#6-inputs-and-project-layout)
+- [7. CLI Usage](#7-cli-usage)
+- [8. Python API Usage](#8-python-api-usage)
+- [9. Streamlit Front-End](#9-streamlit-front-end)
+- [10. Skill Specification and Extension](#10-skill-specification-and-extension)
+- [11. Analysis Pipeline and Auto-Decisions](#11-analysis-pipeline-and-auto-decisions)
+- [12. Outputs](#12-outputs)
+- [13. FAQ](#13-faq)
+- [14. Development and Testing](#14-development-and-testing)
+- [15. Known Limitations and Roadmap Suggestions](#15-known-limitations-and-roadmap-suggestions)
+- [16. License](#16-license)
 
-## 架构
+---
 
-```
+## 1. Overview
+
+CellForge Agent decomposes single-cell analysis into reusable **Skills** and executes them in a ReAct-style loop:
+
+1. **Reason**: plan steps from background and research goals.
+2. **Act**: execute the selected skill/tool.
+3. **Observe**: collect metrics and intermediate outcomes.
+4. **Critique**: evaluate success thresholds and data quality.
+5. **Adjust**: tune parameters and retry when needed.
+
+Typical use cases:
+
+- End-to-end standard scRNA-seq workflows (QC → clustering → annotation).
+- Reproducible runs with structured memory/checkpoints/reports.
+- Progressive capability expansion through skill-based modularity.
+
+---
+
+## 2. Key Features
+
+- **Skill-driven architecture** with registry-based discovery and validation.
+- **ReAct + Skill execution loop** for transparent, auditable processing.
+- **Self-correction with critic feedback** for parameter adaptation.
+- **Data consistency checks** during initialization.
+- **Lazy loading of skills** to reduce overhead.
+- **Dynamic extension support** (e.g., `sc-skill-creator`).
+- **Dual interfaces**: CLI for batch runs and Streamlit for interactive use.
+
+---
+
+## 3. Repository Structure
+
+```text
 CellForge-Agent/
-├── skills/                    # 技能库
+├── skills/                     # Skill library (one folder per skill)
+│   ├── scanpy_qc/
 │   ├── scanpy_filter_cells/
-│   ├── sc_batch_correction/
-│   ├── sc_cell_annotation/
-│   ├── sc_filter_cells/
-│   └── sc_skill_creator/      # 元技能：动态创建新技能
+│   ├── scanpy_normalize/
+│   ├── scanpy_hvg/
+│   ├── scanpy_scale/
+│   ├── scanpy_pca/
+│   ├── scanpy_neighbors/
+│   ├── scanpy_leiden/
+│   ├── scanpy_umap/
+│   ├── scanpy_rank_genes/
+│   ├── harmony_batch/
+│   ├── celltypist_annotate/
+│   └── sc-skill-creator/
 ├── src/
+│   ├── cli.py                  # CLI entrypoint
 │   ├── core/
-│   │   ├── config.py          # 配置管理
-│   │   └── api_client.py     # MiniMax API 客户端
-│   └── agent/
-│       ├── registry.py        # 技能注册与发现
-│       ├── executor.py        # 技能执行器
-│       ├── critic.py          # 自我纠错评估
-│       ├── agent.py          # ReAct Agent 核心
-│       ├── planner.py        # 分析规划器
-│       ├── memory.py         # 记忆管理
-│       ├── validator.py      # 结果验证
-│       ├── data_checker.py   # 数据一致性检查
-│       ├── deep_research.py  # 深度研究引擎
-│       └── reporter.py       # 报告生成
-└── .env                      # API 密钥配置
+│   │   ├── config.py           # Runtime config and env handling
+│   │   └── api_client.py       # LLM/multimodal API client
+│   ├── agent/
+│   │   ├── agent.py            # ReAct agent core
+│   │   ├── planner.py          # Analysis planner
+│   │   ├── executor.py         # Skill executor
+│   │   ├── critic.py           # Evaluation and correction
+│   │   ├── registry.py         # Skill registry/discovery
+│   │   ├── validator.py        # Numeric validator
+│   │   ├── data_checker.py     # Data consistency checker
+│   │   ├── memory.py           # Execution memory manager
+│   │   ├── reporter.py         # Report generation
+│   │   └── deep_research.py    # Deep research helper
+│   └── frontend/app.py         # Streamlit app
+├── inputs/                     # Example/test inputs
+├── tests/                      # Unit tests
+├── environment.yml             # Conda environment
+├── requirements.txt            # Pip dependencies
+└── pyproject.toml              # Packaging metadata
 ```
 
-## 安装
+---
 
-### 方法1: Conda 环境 (推荐)
+## 4. Quick Start (5 Minutes)
+
+### Step 1: Clone
 
 ```bash
-# 克隆项目
 git clone https://github.com/HChaoLab/CellForge-Agent.git
 cd CellForge-Agent
+```
 
-# 创建 Conda 环境
+### Step 2: Install dependencies (Conda recommended)
+
+```bash
 conda env create -f environment.yml
-conda activate cellforge_agent
-
-# 配置 API 密钥
-cp .env.example .env
-# 编辑 .env 填入 MINIMAX_API_KEY
+conda activate scagent_v2
 ```
 
-### 方法2: pip 安装
+### Step 3: Configure environment variables
 
 ```bash
-# 克隆项目
+cp .env.example .env
+# Edit .env and set MINIMAX_API_KEY
+```
+
+### Step 4: Verify skills are discoverable
+
+```bash
+python -m src.cli --list-skills
+```
+
+### Step 5: Run demo or full analysis
+
+```bash
+# Demo mode (no input data required)
+python -m src.cli --demo
+
+# Full run (requires h5ad input)
+python -m src.cli --run \
+  --project exampleProject \
+  --input inputs/exampleProject/pbmc.h5ad \
+  --background "Human PBMC data from COVID patients" \
+  --research "Compare cell types between treatment and control"
+```
+
+---
+
+## 5. Installation and Environment
+
+### 5.1 Option A: Conda (recommended)
+
+```bash
 git clone https://github.com/HChaoLab/CellForge-Agent.git
 cd CellForge-Agent
-
-# 安装依赖
-pip install -e .
-
-# 配置 API 密钥
+conda env create -f environment.yml
+conda activate scagent_v2
 cp .env.example .env
-# 编辑 .env 填入 MINIMAX_API_KEY
 ```
 
-### 环境变量配置
-
-`.env` 文件需要包含以下变量：
-
-| 变量 | 说明 |
-|------|------|
-| `MINIMAX_API_KEY` | MiniMax API 密钥 |
-| `MINIMAX_TEXT_MODEL` | 文本模型 (默认: MiniMax-M2.7-highspeed) |
-| `MINIMAX_TEXT_API_URL` | 文本 API 地址 |
-| `MINIMAX_VISION_MODEL` | 视觉模型 |
-| `MINIMAX_VISION_API_URL` | 视觉 API 地址 |
-
-### 示例数据
-
-下载示例 PBMC 数据：[https://figshare.com/articles/dataset/PBMC_data_for_SCelVis/10002125/1](https://figshare.com/articles/dataset/PBMC_data_for_SCelVis/10002125/1)
-
-将下载的 `.h5ad` 文件放置到 `inputs/exampleProject/` 目录
-
-## 快速开始
-
-### 1. 查看可用技能
+### 5.2 Option B: pip editable install
 
 ```bash
-cd /home/rstudio
-python -m src.cli --list-skills --skills-root /home/rstudio/CellForge-Agent/skills
+git clone https://github.com/HChaoLab/CellForge-Agent.git
+cd CellForge-Agent
+pip install -e .
+cp .env.example .env
 ```
 
-### 2. 运行演示
+### 5.3 Runtime requirements
 
-```bash
-cd /home/rstudio
-python -m src.cli --demo --skills-root /home/rstudio/CellForge-Agent/skills
+- Python: `>=3.10`
+- Core: `scanpy`, `anndata`
+- Common optional packages: `celltypist`, `harmony-python`, `leidenalg`, `streamlit`
+
+### 5.4 Environment variables
+
+Your `.env` should include at least:
+
+| Variable | Description |
+|---|---|
+| `MINIMAX_API_KEY` | MiniMax API key (required for model-backed features) |
+| `MINIMAX_TEXT_MODEL` | Text model name (optional) |
+| `MINIMAX_TEXT_API_URL` | Text endpoint URL (optional) |
+| `MINIMAX_VISION_MODEL` | Vision model name (optional) |
+| `MINIMAX_VISION_API_URL` | Vision endpoint URL (optional) |
+
+> If you only run purely local steps, some model endpoints may not be used. Still, full configuration is recommended for predictable execution.
+
+---
+
+## 6. Inputs and Project Layout
+
+### 6.1 Input format
+
+- Primary input type: `.h5ad` (AnnData).
+- Recommended pre-checks:
+  - Valid cell/gene matrix dimensions.
+  - Useful metadata in `obs` and `var`.
+  - File can be loaded by Scanpy without corruption.
+
+### 6.2 Example data
+
+Historical README versions referenced a PBMC sample dataset:
+
+- https://figshare.com/articles/dataset/PBMC_data_for_SCelVis/10002125/1
+
+Suggested placement:
+
+```text
+inputs/exampleProject/pbmc.h5ad
 ```
 
-### 3. 运行完整分析
+### 6.3 Project naming best practices
 
-使用示例数据：
+Use unique `--project` names per run to avoid output collisions:
+
+- `pbmc_covid_v1`
+- `tumor_atlas_batchA`
+- `benchmark_run_2026_03_30`
+
+---
+
+## 7. CLI Usage
+
+Entrypoint:
+
 ```bash
-cd /home/rstudio
+python -m src.cli --help
+```
+
+### 7.1 Common commands
+
+```bash
+# 1) List available skills
+python -m src.cli --list-skills
+
+# 2) Demo mode
+python -m src.cli --demo
+
+# 3) Validate skills
+python -m src.cli --validate-skills
+
+# 4) Validate and auto-fix skill issues
+python -m src.cli --validate-skills --fix-skills
+
+# 5) Run full analysis
 python -m src.cli --run \
-    --project exampleProject \
-    --skills-root /home/rstudio/CellForge-Agent/skills \
-    --input /home/rstudio/CellForge-Agent/inputs/exampleProject/pbmc.h5ad \
-    --background "Human PBMC data from COVID patients" \
-    --research "Compare cell types between treatment and control"
+  --project myproject \
+  --input /path/to/data.h5ad \
+  --background "Human PBMC" \
+  --research "Find differential cell states"
 ```
 
-使用测试数据：
+### 7.2 Parameters
+
+| Parameter | Description |
+|---|---|
+| `--list-skills` | List skills and exit |
+| `--demo` | Run registry/agent demo |
+| `--validate-skills` | Validate skill folders and metadata |
+| `--fix-skills` | Auto-fix detected issues (with `--validate-skills`) |
+| `--run` | Execute full analysis pipeline |
+| `--project` | Project name (default: `default_project`) |
+| `--input` | Path to `.h5ad` input (required for `--run`) |
+| `--skills-root` | Skills root directory (default: `skills/`) |
+| `--output-dir` | Output directory base (default: `outputs/`) |
+| `--background` | Background context (species/tissue/disease) |
+| `--research` | Research question |
+| `--max-iterations` | Max step count (default: `10`) |
+| `--no-validation` | Disable numeric validation |
+| `--verbose` | Enable verbose logging |
+
+### 7.3 Production-style command example
+
 ```bash
-cd /home/rstudio
 python -m src.cli --run \
-    --project testProject \
-    --skills-root /home/rstudio/CellForge-Agent/skills \
-    --input /home/rstudio/CellForge-Agent/inputs/testProject/data.h5ad \
-    --background "Human PBMC data" \
-    --research "Find cell types"
+  --project pbmc_covid_prod \
+  --skills-root skills \
+  --output-dir outputs \
+  --input inputs/exampleProject/pbmc.h5ad \
+  --background "Human PBMC data from COVID-19 patients, two donor batches" \
+  --research "Identify major cell types and compare treatment/control states" \
+  --max-iterations 12 \
+  --verbose
 ```
 
-## CLI 参数
+---
 
-| 参数 | 说明 |
-|------|------|
-| `--list-skills` | 列出所有可用技能 |
-| `--demo` | 运行演示模式 |
-| `--run` | 运行完整分析流程 |
-| `--project` | 项目名称 (default: default_project) |
-| `--input` | 输入 h5ad 文件路径 |
-| `--skills-root` | 技能库路径 (default: skills/) |
-| `--output-dir` | 输出目录 (default: outputs/) |
-| `--background` | 背景描述 (物种/组织/疾病) |
-| `--research` | 研究问题 |
-| `--max-iterations` | 最大迭代次数 (default: 10) |
-| `--no-validation` | 禁用数值验证 |
-| `--verbose` | 启用详细日志 |
+## 8. Python API Usage
 
-## Python API
-
-### 基本用法
+### 8.1 Standard workflow
 
 ```python
 from src.agent import ReActAgent, AgentConfig
 
-# 创建 Agent
 config = AgentConfig(
     skills_root="skills/",
     project_name="myproject",
     output_dir="outputs/",
+    max_iterations=10,
 )
-agent = ReActAgent(config)
 
-# 加载数据
+agent = ReActAgent(config)
 agent.load_data("data.h5ad")
 
-# 初始化
-result = agent.initialize(
+init_result = agent.initialize(
     background="Human PBMC data",
     research="Find cell types",
 )
 
-# 创建并执行分析计划
-plan = agent.plan_analysis()
+plan = agent.plan_analysis(existing_analysis=init_result.get("existing_analysis", {}))
 for step in plan:
     agent.execute_step(step)
 
-# 生成报告
 report = agent.generate_report()
 print(report)
 ```
 
-### 手动执行技能
+### 8.2 Execute one skill manually
 
 ```python
 from src.agent import ReActAgent
@@ -188,93 +321,81 @@ from src.agent import ReActAgent
 agent = ReActAgent()
 agent.load_data("data.h5ad")
 
-# 执行单个技能
-step = agent.execute_skill(
+result = agent.execute_skill(
     skill_id="scanpy_filter_cells",
     params={"min_genes": 200, "min_cells": 3},
     context={"protocol": "10x Genomics"},
 )
 
-print(f"Success: {step.observation['success']}")
-print(f"Metrics: {step.observation['metrics']}")
+print(result.observation.get("success"))
+print(result.observation.get("metrics"))
 ```
 
-### 使用 SkillRegistry
+### 8.3 Skill registry usage
 
 ```python
 from src.agent import SkillRegistry
 
 registry = SkillRegistry("skills/")
-registry.scan()
+count = registry.scan()
+print("skills:", count)
 
-# 获取工具清单
 manifest = registry.get_tool_manifest()
 for item in manifest:
-    print(f"{item['id']}: {item['purpose']}")
+    print(item["id"], item["purpose"])
 
-# 按需加载技能规格
 spec = registry.get_skill_spec("scanpy_filter_cells")
 print(spec)
 
-# 搜索技能
 results = registry.search("filter")
+print(results)
 
-# 动态注册新技能
 registry.register_skill_folder("/path/to/new/skill")
 ```
 
-## Streamlit 前端
+---
 
-提供交互式 Web 界面，支持可视化分析流程。
+## 9. Streamlit Front-End
 
-### 启动前端
+### 9.1 Launch
 
 ```bash
-cd /home/rstudio
 streamlit run src/frontend/app.py
 ```
 
-前端默认访问 `http://localhost:8501`
+Default URL: `http://localhost:8501`
 
-### 前端功能
+### 9.2 What it supports
 
-- **分析控制**: 上传数据文件、生成分析计划、执行分析流程
-- **结果展示**: 查看数据统计、图表、报告和下载文件
-- **聊天交互**: 与 Agent 对话、询问分析结果
+- Upload/select data inputs.
+- Generate and execute analysis plans.
+- Inspect stats, plots, and generated reports.
+- Chat with the agent about run status/results.
+- Download artifacts.
 
-### 远程服务器配置
-
-如需从远程服务器加载项目数据，设置环境变量：
+### 9.3 Remote input path configuration
 
 ```bash
 export CELLFORGE_INPUTS_PATH="/path/to/remote/inputs"
 streamlit run src/frontend/app.py
 ```
 
-## 技能规格 (Skill Specification)
+---
 
-技能存储在 `skills/` 目录下，每个技能一个文件夹：
+## 10. Skill Specification and Extension
 
-```
-skills/
-└── scanpy_filter_cells/
-    └── skill.json
-```
+Each skill lives in `skills/<skill_name>/skill.json`.
 
-### skill.json 结构
+### 10.1 Minimal `skill.json` example
 
 ```json
 {
   "skill_id": "scanpy_filter_cells",
   "cognitive_layer": {
-    "purpose": "Filter low-quality cells based on gene counts",
-    "parameter_impact": {
-      "min_genes": "Higher values remove more cells but increase quality",
-      "min_cells": "Higher values are more stringent"
-    }
+    "purpose": "Filter low-quality cells based on gene counts"
   },
   "execution_layer": {
-    "code_template": "sc.pp.filter_cells(input_data, ...)\nresult = input_data",
+    "code_template": "sc.pp.filter_cells(input_data, ...)",
     "default_params": {
       "min_genes": 200,
       "min_cells": 3
@@ -283,87 +404,141 @@ skills/
   "critic_layer": {
     "success_thresholds": "removal_rate < 0.5",
     "metrics_to_extract": ["removal_rate", "n_cells"]
-  },
-  "parameter_science_guide": {
-    "min_genes": {
-      "too_strict_removal_high": {
-        "adjust": "reduce min_genes by 50",
-        "causal_chain": "min_genes too high → excessive cell removal → lower removal rate"
-      }
-    }
   }
 }
 ```
 
-## 分析流程
+### 10.2 Authoring recommendations
 
-### 标准 Pipeline
+- Keep `skill_id` aligned with folder name.
+- Provide conservative default parameters.
+- Define measurable critic metrics and thresholds.
+- Add corrective guidance for recoverable failure patterns.
+- Run `python -m src.cli --validate-skills` before committing.
 
+---
+
+## 11. Analysis Pipeline and Auto-Decisions
+
+### 11.1 Standard pipeline
+
+```text
+1. QC
+2. Normalization
+3. HVG Selection
+4. Scaling
+5. [Batch Correction] (optional)
+6. PCA
+7. Neighbors
+8. Clustering (Leiden)
+9. UMAP
+10. Cell Annotation
+11. DEG Analysis
+12. [Trajectory Analysis] (optional)
 ```
-1. QC          → 过滤低质量细胞
-2. Normalization → 标准化表达值
-3. HVG Selection → 筛选高变异基因
-4. Scaling     → 缩放数据范围
-5. [Batch Correction] → 消除批次效应 (可选)
-6. PCA         → 主成分分析
-7. Neighbors   → 构建邻居图
-8. Clustering  → Leiden 聚类
-9. UMAP        → UMAP 可视化
-10. Cell Annotation → 细胞类型注释
-11. DEG Analysis → 差异表达分析
-12. [Trajectory Analysis] → 轨迹分析 (可选)
+
+### 11.2 Auto-decision examples
+
+- Add batch correction when context suggests `batch`, `donor`, or `sample` effects.
+- Add trajectory-related steps when goals mention `trajectory`, `pseudotime`, or `development`.
+
+### 11.3 Data consistency checks
+
+Initialization includes heuristic checks for:
+
+- Species consistency (text context vs gene naming patterns).
+- Tissue/sample hints (e.g., PBMC, brain, tumor).
+- Reasonable ranges for cell and gene counts.
+- Existing embeddings/cluster state (PCA, UMAP, clustering).
+
+---
+
+## 12. Outputs
+
+Default output path:
+
+```text
+outputs/<project>/
 ```
 
-### 自动决策
+Common artifacts:
 
-- **Batch Correction**: 根据背景描述中的 "batch"、"donor"、"sample" 等关键词自动添加
-- **Trajectory Analysis**: 根据研究问题中的 "trajectory"、"pseudotime"、"development" 等关键词自动添加
+- `Report.md` — generated analysis report.
+- `memory.json` — execution history and observations.
+- `checkpoints/` — intermediate/final state snapshots.
 
-## 数据一致性检查
+For reproducibility, archive input file, command arguments, and output folder together.
 
-`DataConsistencyChecker` 验证：
+---
 
-- **物种一致性**: 从背景描述 vs 从基因名推断
-- **组织类型**: PBMC / Brain / Tumor 等
-- **细胞数合理性**: 100 - 1,000,000
-- **基因数合理性**: 500 - 60,000
-- **已有分析检测**: PCA / UMAP / 聚类等
+## 13. FAQ
 
-## 报告输出
+### Q1: Why does `--run` fail with "--input is required"?
 
-运行后在 `outputs/{project}/` 目录下生成：
+Because `--run` requires `--input /path/to/data.h5ad`.
 
-- `Report.md` - 分析报告 (Markdown)
-- `memory.json` - 完整执行历史
-- `checkpoints/` - 中间数据状态
+### Q2: What if no skills are listed?
 
-## 许可证
+Check your `--skills-root` path, then run:
+
+```bash
+python -m src.cli --validate-skills
+```
+
+### Q3: If one skill fails, does the whole run stop?
+
+Failures are recorded step-by-step; continuation depends on plan dependencies and runtime policy. Final status appears in summary/report outputs.
+
+### Q4: Can I use another model endpoint/provider?
+
+Yes. Configure model URL/name variables in `.env` and ensure response formats remain compatible with the current client.
+
+---
+
+## 14. Development and Testing
+
+### 14.1 Install developer extras
+
+```bash
+pip install -e .[dev]
+```
+
+### 14.2 Run tests
+
+```bash
+pytest
+```
+
+### 14.3 Recommended sanity checks
+
+```bash
+python -m src.cli --help
+python -m src.cli --list-skills
+python -m src.cli --validate-skills
+```
+
+---
+
+## 15. Known Limitations and Roadmap Suggestions
+
+### Current state (from recent maintenance work)
+
+- Branding unified as **CellForge Agent**.
+- Import paths standardized to `src.*`.
+- Top-level exports use lazy import to reduce side effects.
+- Packaging metadata in `pyproject.toml` aligned with current layout.
+- CLI examples updated to match current entrypoints.
+
+### Suggested next steps
+
+1. **Package layout standardization**: move from generic `src/` module naming to a clearer distributable package namespace.
+2. **Dependency tiering**: split extras by use case (`analysis`, `frontend`, `dev`).
+3. **CI coverage expansion**: add CLI smoke tests and E2E regression runs.
+4. **Config naming cleanup**: standardize environment variable naming (e.g., `CELLFORGE_*`).
+5. **Documentation operations**: add changelog + migration guide.
+
+---
+
+## 16. License
 
 MIT
-
-## 当前代码与文档 Review（2026-03）
-
-### 已修复项
-
-- 统一品牌命名为 **CellForge Agent**，并移除历史命名的残留引用。
-- 统一代码导入路径为 `src.*`，避免因旧模块前缀导致的运行错误。
-- 修复顶层包与 `src.agent` 的导出策略，改为**延迟导入（lazy import）**，减少无关依赖在导入阶段触发。
-- 修正 `pyproject.toml` 项目名称与打包配置，避免非法包名与错误匹配模式。
-- 更新 CLI/README 示例命令，确保可直接执行。
-
-### 建议的下一步方向
-
-1. **包结构标准化**
-   - 建议将 `src/` 重命名为显式 Python 包（例如 `cellforge_agent/`），并迁移 `python -m src.cli` 为 `python -m cellforge_agent.cli`，提升可维护性与分发一致性。
-
-2. **依赖分层**
-   - 将核心依赖和可选依赖拆分（如 `analysis`, `frontend`, `dev` extra），减少最小安装体积并加速 CI。
-
-3. **测试分层与CI**
-   - 增加 smoke test（CLI、前端启动、技能扫描）与端到端回归用例，保证重命名和重构后的稳定性。
-
-4. **配置规范化**
-   - 将环境变量集中命名为 `CELLFORGE_*`，并提供 `.env.example` 与配置校验脚本。
-
-5. **文档工程化**
-   - 引入 `docs/` 的版本化变更日志（changelog）与迁移指南（migration guide），帮助用户从旧版本平滑升级。
