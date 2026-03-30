@@ -13,21 +13,21 @@ class TestSkillRegistry:
 
     def test_init_default_root(self):
         """Test initialization with default root."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         registry = SkillRegistry()
         assert registry.skills_root == Path("skills/library/")
 
     def test_init_custom_root(self):
         """Test initialization with custom root."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         registry = SkillRegistry("/custom/path")
         assert registry.skills_root == Path("/custom/path")
 
     def test_scan_empty_dir(self):
         """Test scanning an empty directory."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             registry = SkillRegistry(tmpdir)
@@ -37,7 +37,7 @@ class TestSkillRegistry:
 
     def test_scan_with_skill(self):
         """Test scanning directory with a valid skill."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "test_skill"
@@ -56,7 +56,7 @@ class TestSkillRegistry:
 
     def test_scan_invalid_json(self):
         """Test scanning directory with invalid JSON."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "bad_skill"
@@ -70,7 +70,7 @@ class TestSkillRegistry:
 
     def test_scan_missing_skill_id(self):
         """Test scanning skill without skill_id."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "no_id_skill"
@@ -86,7 +86,7 @@ class TestSkillRegistry:
 
     def test_get_tool_manifest(self):
         """Test getting tool manifest."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "my_skill"
@@ -107,7 +107,7 @@ class TestSkillRegistry:
 
     def test_get_skill_spec_on_demand(self):
         """Test loading full skill spec on demand."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "full_skill"
@@ -131,7 +131,7 @@ class TestSkillRegistry:
 
     def test_register_skill_folder(self):
         """Test dynamic skill registration."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             registry = SkillRegistry(tmpdir)
@@ -152,7 +152,7 @@ class TestSkillRegistry:
 
     def test_search(self):
         """Test skill search."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             for name, purpose in [
@@ -180,7 +180,7 @@ class TestSkillRegistry:
 
     def test_unregister(self):
         """Test skill unregistration."""
-        from scAgent_v2.src.agent.registry import SkillRegistry
+        from src.agent.registry import SkillRegistry
 
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "to_remove"

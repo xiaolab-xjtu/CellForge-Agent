@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Analysis Planner - LLM-driven planning for scAgent_v2.
+Analysis Planner - LLM-driven planning for CellForge Agent.
 
 Provides:
 - LLMPlanner: Creates plans via LLM, handles failures with retries
@@ -32,7 +32,7 @@ class LLMPlanner:
     4. Falls back to fixed plan on LLM failure
     """
 
-    SYSTEM_PROMPT = """# Role: scAgent_v2 Task Planning Expert
+    SYSTEM_PROMPT = """# Role: CellForge Agent Task Planning Expert
 
 ## 1. Core Task
 Transform user requirements into executable Skill calls for single-cell RNA-seq analysis.

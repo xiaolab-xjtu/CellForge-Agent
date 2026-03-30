@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SkillRegistry - Registry and discovery module for scAgent_v2 skills.
+SkillRegistry - Registry and discovery module for CellForge Agent skills.
 
 Manages skills stored in skills/library/, where each skill resides in its own
 folder (folder name = tool name) containing skill.json.

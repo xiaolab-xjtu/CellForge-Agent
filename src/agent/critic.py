@@ -15,7 +15,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from scAgent_v2.src.agent.executor import ExecutionResult
+    from src.agent.executor import ExecutionResult
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class SkillCritic:
         """Lazy load metrics library."""
         if self._metrics_lib is None:
             try:
-                from scAgent_v2.src.agent.metrics import (
+                from src.agent.metrics import (
                     silhouette_score,
                     silhouette_score_batch,
                     mitochondrial_percentage,

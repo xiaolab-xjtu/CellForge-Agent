@@ -48,7 +48,7 @@ def render(session_state):
                 with st.spinner("生成分析计划..."):
                     existing = None
                     if agent.adata is not None:
-                        from scAgent_v2.src.agent.data_checker import DataConsistencyChecker
+                        from src.agent.data_checker import DataConsistencyChecker
                         checker = DataConsistencyChecker()
                         existing = checker.check_existing_analysis(agent.adata)
 
@@ -173,7 +173,7 @@ def render(session_state):
                         st.info(f"报告已保存: {report_path}")
 
                         try:
-                            from scAgent_v2.src.agent.reporter import Reporter
+                            from src.agent.reporter import Reporter
                             reporter = Reporter(
                                 project_name=session_state.get('project_name', 'project'),
                                 output_dir=str(output_dir)

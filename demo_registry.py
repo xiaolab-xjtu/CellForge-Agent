@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Demo script for scAgent_v2 registry functionality.
+Demo script for CellForge Agent registry functionality.
 
 Tests the core SkillRegistry without requiring full skill execution.
 """
@@ -8,16 +8,16 @@ Tests the core SkillRegistry without requiring full skill execution.
 import sys
 sys.path.insert(0, '/home/rstudio')
 
-from scAgent_v2.src.agent.registry import SkillRegistry
+from src.agent.registry import SkillRegistry
 
 
 def demo():
     """Demonstrate registry functionality."""
     print("=" * 60)
-    print("scAgent_v2 SkillRegistry Demo")
+    print("CellForge Agent SkillRegistry Demo")
     print("=" * 60)
 
-    registry = SkillRegistry("/home/rstudio/scAgentSkills/skills")
+    registry = SkillRegistry("/home/rstudio/cellforge_agent_skills/skills")
 
     print(f"\n[1] Initial scan:")
     count = registry.scan()
@@ -42,7 +42,7 @@ def demo():
         print(f"    Found: {r['id']} - {r['purpose'][:50]}...")
 
     print(f"\n[5] Dynamic registration:")
-    ok = registry.register_skill_folder("/home/rstudio/scAgentSkills/sc-filter-cells")
+    ok = registry.register_skill_folder("/home/rstudio/cellforge_agent_skills/sc-filter-cells")
     print(f"    Register 'sc-filter-cells': {ok}")
 
     print(f"\n[6] Registry state:")

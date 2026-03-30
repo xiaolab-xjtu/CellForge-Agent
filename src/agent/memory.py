@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AgentMemory - Memory and checkpoint management for scAgent_v2.
+AgentMemory - Memory and checkpoint management for CellForge Agent.
 
 Handles:
 - Decision trail and parameter adjustment logs

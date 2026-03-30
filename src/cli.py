@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-scAgent_v2 CLI - Command-line interface for the agent.
+CellForge Agent CLI - Command-line interface for the agent.
 
 Usage:
-    python -m scAgent_v2.cli --help
-    python -m scAgent_v2.cli --list-skills
-    python -m scAgent_v2.cli --run --project myproject --input data.h5ad
-    python -m scAgent_v2.cli --demo
+    python -m src.cli --help
+    python -m src.cli --list-skills
+    python -m src.cli --run --project myproject --input data.h5ad
+    python -m src.cli --demo
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import logging
 import sys
 from pathlib import Path
 
-from scAgent_v2.src.core.config import AGENT_CONFIG, ANALYSIS_CONFIG
+from src.core.config import AGENT_CONFIG, ANALYSIS_CONFIG
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,21 +28,21 @@ logger = logging.getLogger(__name__)
 def create_parser() -> argparse.ArgumentParser:
     """Create argument parser."""
     parser = argparse.ArgumentParser(
-        description="scAgent_v2 - Single-cell Analysis Agent with ReAct+Skill architecture",
+        description="CellForge Agent - Single-cell Analysis Agent with ReAct+Skill architecture",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # List available skills
-  python -m scAgent_v2.cli --list-skills
+  python -m src.cli --list-skills
 
   # Run demo (no data required)
-  python -m scAgent_v2.cli --demo
+  python -m src.cli --demo
 
   # Run analysis on data
-  python -m scAgent_v2.cli --run --project myproject --input data.h5ad
+  python -m src.cli --run --project myproject --input data.h5ad
 
   # Run with custom skills path
-  python -m scAgent_v2.cli --run --project myproject \\
+  python -m src.cli --run --project myproject \\
       --skills-root /path/to/skills \\
       --input data.h5ad \\
       --background "Human PBMC data" \\
@@ -132,13 +132,13 @@ Examples:
 
 def cmd_list_skills(args: argparse.Namespace) -> None:
     """List available skills."""
-    from scAgent_v2.src.agent.registry import SkillRegistry
+    from src.agent.registry import SkillRegistry
 
     registry = SkillRegistry(args.skills_root)
     count = registry.scan()
 
     print(f"\n{'='*60}")
-    print("scAgent_v2 Available Skills")
+    print("CellForge Agent Available Skills")
     print(f"{'='*60}")
     print(f"\nSkills root: {args.skills_root}")
     print(f"Total skills: {count}\n")
@@ -150,13 +150,13 @@ def cmd_list_skills(args: argparse.Namespace) -> None:
 
 def cmd_demo(args: argparse.Namespace) -> None:
     """Run registry demo."""
-    from scAgent_v2.src.agent.registry import SkillRegistry
+    from src.agent.registry import SkillRegistry
 
     registry = SkillRegistry(args.skills_root)
     count = registry.scan()
 
     print(f"\n{'='*60}")
-    print("scAgent_v2 Registry Demo")
+    print("CellForge Agent Registry Demo")
     print(f"{'='*60}")
     print(f"\nSkills root: {args.skills_root}")
     print(f"Found {count} skills:\n")
@@ -177,11 +177,11 @@ def cmd_demo(args: argparse.Namespace) -> None:
 
 def cmd_run(args: argparse.Namespace) -> None:
     """Run the complete analysis pipeline."""
-    from scAgent_v2.src.agent import ReActAgent, AgentConfig
-    from scAgent_v2.src.agent.planner import AnalysisPlanner
+    from src.agent import ReActAgent, AgentConfig
+    from src.agent.planner import AnalysisPlanner
 
     print(f"\n{'='*60}")
-    print("scAgent_v2 Analysis Pipeline")
+    print("CellForge Agent Analysis Pipeline")
     print(f"{'='*60}")
 
     if not args.input:
@@ -297,13 +297,13 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 def cmd_validate_skills(args: argparse.Namespace) -> None:
     """Validate skills and check for issues."""
-    from scAgent_v2.src.agent.registry import SkillRegistry
+    from src.agent.registry import SkillRegistry
 
     registry = SkillRegistry(args.skills_root)
     count = registry.scan()
 
     print(f"\n{'='*60}")
-    print("scAgent_v2 Skill Validation Report")
+    print("CellForge Agent Skill Validation Report")
     print(f"{'='*60}")
     print(f"\nSkills root: {args.skills_root}")
     print(f"Total skills: {count}\n")

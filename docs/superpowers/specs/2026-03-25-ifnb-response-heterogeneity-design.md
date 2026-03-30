@@ -1,4 +1,4 @@
-# scAgent_v2 IFN-β响应异质性分析设计
+# CellForge Agent IFN-β响应异质性分析设计
 
 **日期**: 2026-03-25
 **状态**: Approved
