@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scAgent_v2 Configuration
+CellForge Agent Configuration
 
 Path, API, analysis thresholds, and validation settings.
 """

@@ -1,4 +1,4 @@
-# scAgent_v2 Pattern-Based Dynamic Planning
+# CellForge Agent Pattern-Based Dynamic Planning
 
 **日期**: 2026-03-25
 **状态**: Design Approved

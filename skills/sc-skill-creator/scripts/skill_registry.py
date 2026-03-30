@@ -295,7 +295,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         root = sys.argv[1]
     else:
-        root = "/home/rstudio/scAgentSkills"
+        root = "/home/rstudio/cellforge_agent_skills"
     
     registry = SkillRegistry(root)
     registry.scan()

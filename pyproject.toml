@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "scAgent_v2"
+name = "cellforge-agent"
 version = "0.1.0"
 description = "Single-cell Analysis Agent with ReAct+Skill architecture"
 readme = "README.md"
@@ -21,7 +21,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["scAgent_v2*"]
+include = ["src*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

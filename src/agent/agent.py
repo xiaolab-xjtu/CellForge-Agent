@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from scAgent_v2.src.agent.executor import CancellationToken, ProjectTerminationError
+from src.agent.executor import CancellationToken, ProjectTerminationError
 
 logger = logging.getLogger(__name__)
 
@@ -73,14 +73,14 @@ class ReActAgent:
         Args:
             config: Agent configuration. Uses defaults if None.
         """
-        from scAgent_v2.src.agent.registry import SkillRegistry
-        from scAgent_v2.src.agent.executor import SkillExecutor
-        from scAgent_v2.src.agent.critic import SkillCritic
-        from scAgent_v2.src.agent.memory import AgentMemory
-        from scAgent_v2.src.agent.validator import ResultValidator
-        from scAgent_v2.src.agent.data_checker import DataConsistencyChecker
-        from scAgent_v2.src.agent.planner import AnalysisPlanner, LLMPlanner
-        from scAgent_v2.src.core.api_client import APIClient
+        from src.agent.registry import SkillRegistry
+        from src.agent.executor import SkillExecutor
+        from src.agent.critic import SkillCritic
+        from src.agent.memory import AgentMemory
+        from src.agent.validator import ResultValidator
+        from src.agent.data_checker import DataConsistencyChecker
+        from src.agent.planner import AnalysisPlanner, LLMPlanner
+        from src.core.api_client import APIClient
 
         self.config = config or AgentConfig()
 

@@ -1,3 +1,3 @@
-"""scAgent_v2 src package."""
+"""CellForge Agent src package."""
 
 __all__ = []

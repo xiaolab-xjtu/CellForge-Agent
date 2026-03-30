@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from scAgent_v2.src.agent.registry import SkillRegistry
+    from src.agent.registry import SkillRegistry
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-# scAgent_v2
+# CellForge Agent
 
 单细胞转录组分析智能体 (Single-cell Analysis Agent)，基于 **ReAct+Skill** 架构。
 
@@ -13,7 +13,7 @@
 ## 架构
 
 ```
-scAgent_v2/
+CellForge-Agent/
 ├── skills/                    # 技能库
 │   ├── scanpy_filter_cells/
 │   ├── sc_batch_correction/
@@ -44,12 +44,12 @@ scAgent_v2/
 
 ```bash
 # 克隆项目
-git clone https://github.com/HChaoLab/scAgent_v2.git
-cd scAgent_v2
+git clone https://github.com/HChaoLab/CellForge-Agent.git
+cd CellForge-Agent
 
 # 创建 Conda 环境
 conda env create -f environment.yml
-conda activate scagent_v2
+conda activate cellforge_agent
 
 # 配置 API 密钥
 cp .env.example .env
@@ -60,8 +60,8 @@ cp .env.example .env
 
 ```bash
 # 克隆项目
-git clone https://github.com/HChaoLab/scAgent_v2.git
-cd scAgent_v2
+git clone https://github.com/HChaoLab/CellForge-Agent.git
+cd CellForge-Agent
 
 # 安装依赖
 pip install -e .
@@ -95,14 +95,14 @@ cp .env.example .env
 
 ```bash
 cd /home/rstudio
-python -m scAgent_v2.src.cli --list-skills --skills-root /home/rstudio/scAgent_v2/skills
+python -m src.cli --list-skills --skills-root /home/rstudio/CellForge-Agent/skills
 ```
 
 ### 2. 运行演示
 
 ```bash
 cd /home/rstudio
-python -m scAgent_v2.src.cli --demo --skills-root /home/rstudio/scAgent_v2/skills
+python -m src.cli --demo --skills-root /home/rstudio/CellForge-Agent/skills
 ```
 
 ### 3. 运行完整分析
@@ -110,10 +110,10 @@ python -m scAgent_v2.src.cli --demo --skills-root /home/rstudio/scAgent_v2/skill
 使用示例数据：
 ```bash
 cd /home/rstudio
-python -m scAgent_v2.src.cli --run \
+python -m src.cli --run \
     --project exampleProject \
-    --skills-root /home/rstudio/scAgent_v2/skills \
-    --input /home/rstudio/scAgent_v2/inputs/exampleProject/pbmc.h5ad \
+    --skills-root /home/rstudio/CellForge-Agent/skills \
+    --input /home/rstudio/CellForge-Agent/inputs/exampleProject/pbmc.h5ad \
     --background "Human PBMC data from COVID patients" \
     --research "Compare cell types between treatment and control"
 ```
@@ -121,10 +121,10 @@ python -m scAgent_v2.src.cli --run \
 使用测试数据：
 ```bash
 cd /home/rstudio
-python -m scAgent_v2.src.cli --run \
+python -m src.cli --run \
     --project testProject \
-    --skills-root /home/rstudio/scAgent_v2/skills \
-    --input /home/rstudio/scAgent_v2/inputs/testProject/data.h5ad \
+    --skills-root /home/rstudio/CellForge-Agent/skills \
+    --input /home/rstudio/CellForge-Agent/inputs/testProject/data.h5ad \
     --background "Human PBMC data" \
     --research "Find cell types"
 ```
@@ -151,7 +151,7 @@ python -m scAgent_v2.src.cli --run \
 ### 基本用法
 
 ```python
-from scAgent_v2.src.agent import ReActAgent, AgentConfig
+from src.agent import ReActAgent, AgentConfig
 
 # 创建 Agent
 config = AgentConfig(
@@ -183,7 +183,7 @@ print(report)
 ### 手动执行技能
 
 ```python
-from scAgent_v2.src.agent import ReActAgent
+from src.agent import ReActAgent
 
 agent = ReActAgent()
 agent.load_data("data.h5ad")
@@ -202,7 +202,7 @@ print(f"Metrics: {step.observation['metrics']}")
 ### 使用 SkillRegistry
 
 ```python
-from scAgent_v2.src.agent import SkillRegistry
+from src.agent import SkillRegistry
 
 registry = SkillRegistry("skills/")
 registry.scan()
@@ -231,7 +231,7 @@ registry.register_skill_folder("/path/to/new/skill")
 
 ```bash
 cd /home/rstudio
-streamlit run scAgent_v2/src/frontend/app.py
+streamlit run src/frontend/app.py
 ```
 
 前端默认访问 `http://localhost:8501`
@@ -247,8 +247,8 @@ streamlit run scAgent_v2/src/frontend/app.py
 如需从远程服务器加载项目数据，设置环境变量：
 
 ```bash
-export SCAGENT_INPUTS_PATH="/path/to/remote/inputs"
-streamlit run scAgent_v2/src/frontend/app.py
+export CELLFORGE_INPUTS_PATH="/path/to/remote/inputs"
+streamlit run src/frontend/app.py
 ```
 
 ## 技能规格 (Skill Specification)
@@ -340,3 +340,30 @@ skills/
 ## 许可证
 
 MIT
+
+## 当前代码与文档 Review（2026-03）
+
+### 已修复项
+
+- 统一品牌命名为 **CellForge Agent**，并移除历史命名的残留引用。
+- 统一代码导入路径为 `src.*`，避免因旧模块前缀导致的运行错误。
+- 修复顶层包与 `src.agent` 的导出策略，改为**延迟导入（lazy import）**，减少无关依赖在导入阶段触发。
+- 修正 `pyproject.toml` 项目名称与打包配置，避免非法包名与错误匹配模式。
+- 更新 CLI/README 示例命令，确保可直接执行。
+
+### 建议的下一步方向
+
+1. **包结构标准化**
+   - 建议将 `src/` 重命名为显式 Python 包（例如 `cellforge_agent/`），并迁移 `python -m src.cli` 为 `python -m cellforge_agent.cli`，提升可维护性与分发一致性。
+
+2. **依赖分层**
+   - 将核心依赖和可选依赖拆分（如 `analysis`, `frontend`, `dev` extra），减少最小安装体积并加速 CI。
+
+3. **测试分层与CI**
+   - 增加 smoke test（CLI、前端启动、技能扫描）与端到端回归用例，保证重命名和重构后的稳定性。
+
+4. **配置规范化**
+   - 将环境变量集中命名为 `CELLFORGE_*`，并提供 `.env.example` 与配置校验脚本。
+
+5. **文档工程化**
+   - 引入 `docs/` 的版本化变更日志（changelog）与迁移指南（migration guide），帮助用户从旧版本平滑升级。

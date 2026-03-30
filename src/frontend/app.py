@@ -1,5 +1,5 @@
 """
-scAgent_v2 Streamlit Application
+CellForge Agent Streamlit Application
 Main entry point
 """
 import streamlit as st
@@ -14,12 +14,12 @@ sys.path.insert(0, '/home/rstudio')
 from dotenv import load_dotenv
 load_dotenv(project_root / ".env")
 
-from scAgent_v2.src.agent.agent import ReActAgent, AgentConfig
-from scAgent_v2.src.core.config import SKILLS_ROOT, OUTPUTS_DIR
+from src.agent.agent import ReActAgent, AgentConfig
+from src.core.config import SKILLS_ROOT, OUTPUTS_DIR
 
 
 st.set_page_config(
-    page_title="scAgent_v2 - Single Cell Analysis",
+    page_title="CellForge Agent - Single Cell Analysis",
     page_icon="🔬",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -46,7 +46,7 @@ def init_session_state():
 
 def get_inputs_path():
     """Get inputs path from environment or use default."""
-    remote_inputs = os.getenv("SCAGENT_INPUTS_PATH", "")
+    remote_inputs = os.getenv("CELLFORGE_INPUTS_PATH", "")
     if remote_inputs:
         return Path(remote_inputs)
     return project_root / "inputs"
@@ -56,7 +56,7 @@ def main():
     """Main application."""
     init_session_state()
 
-    st.title("🔬 scAgent_v2 - 单细胞转录组分析")
+    st.title("🔬 CellForge Agent - 单细胞转录组分析")
 
     with st.sidebar:
         st.header("项目设置")
@@ -66,7 +66,7 @@ def main():
         if use_remote:
             remote_path = st.text_input(
                 "远端inputs路径",
-                value=os.getenv("SCAGENT_INPUTS_PATH", "/path/to/remote/inputs"),
+                value=os.getenv("CELLFORGE_INPUTS_PATH", "/path/to/remote/inputs"),
                 help="例如: /mnt/nfs/data/inputs"
             )
             inputs_base = Path(remote_path)
@@ -167,20 +167,20 @@ def main():
             for item in st.session_state.agent.manifest[:10]:
                 st.caption(f"- {item['id']}")
 
-        st.caption("scAgent_v2 v0.2.0")
+        st.caption("CellForge Agent v0.2.0")
 
     tab1, tab2, tab3 = st.tabs(["📊 分析控制", "📈 结果展示", "💬 聊天交互"])
 
     with tab1:
-        from scAgent_v2.src.frontend.pages.分析控制 import render
+        from src.frontend.pages.分析控制 import render
         render(st.session_state)
 
     with tab2:
-        from scAgent_v2.src.frontend.pages.结果展示 import render
+        from src.frontend.pages.结果展示 import render
         render(st.session_state)
 
     with tab3:
-        from scAgent_v2.src.frontend.pages.聊天交互 import render
+        from src.frontend.pages.聊天交互 import render
         render(st.session_state)
 
 
