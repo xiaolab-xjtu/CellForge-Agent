@@ -75,55 +75,55 @@ class Reporter:
         """
         lines = []
 
-        lines.append(f"# 单细胞转录组分析报告\n")
-        lines.append(f"**项目**: {self.project_name}\n")
-        lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        lines.append(f"# Single-Cell Transcriptomics Analysis Report\n")
+        lines.append(f"**Project**: {self.project_name}\n")
+        lines.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
         if background:
-            lines.append("\n## 研究背景\n")
+            lines.append("\n## Research Background\n")
             lines.append(f"{background}\n")
 
         if research:
-            lines.append("\n## 研究目的\n")
+            lines.append("\n## Research Objective\n")
             lines.append(f"{research}\n")
 
-        lines.append("\n## 数据概况\n")
+        lines.append("\n## Data Overview\n")
         if adata is not None:
             lines.append(self._generate_data_overview(adata, existing_analysis))
         else:
-            lines.append("*无数据*")
+            lines.append("*No data*")
 
         if existing_analysis and existing_analysis.get("has_analysis"):
-            lines.append("\n## 已有分析\n")
-            lines.append("数据已包含以下分析结果：\n")
+            lines.append("\n## Existing Analysis\n")
+            lines.append("Data already contains the following analysis results:\n")
             for analysis_type in existing_analysis.get("types", []):
                 lines.append(f"- {analysis_type}\n")
 
-        lines.append("\n## 分析步骤详情\n")
+        lines.append("\n## Analysis Steps\n")
         lines.append(self._generate_steps_table(steps))
 
-        lines.append("\n## 聚类结果\n")
+        lines.append("\n## Clustering Results\n")
         if adata is not None and "leiden" in adata.obs:
             lines.append(self._generate_clustering_results(adata))
         else:
-            lines.append("*无聚类结果*")
+            lines.append("*No clustering results*")
 
-        lines.append("\n## 差异表达基因 (Top Markers)\n")
+        lines.append("\n## Differentially Expressed Genes (Top Markers)\n")
         if deg_results:
             lines.append(self._generate_deg_results(deg_results))
         else:
-            lines.append("*无差异表达基因结果*")
+            lines.append("*No DEG results*")
 
-        lines.append("\n## 轨迹分析\n")
+        lines.append("\n## Trajectory Analysis\n")
         if trajectory_results:
             lines.append(self._generate_trajectory_section(trajectory_results))
         else:
-            lines.append("*无轨迹分析结果*")
+            lines.append("*No trajectory analysis results*")
 
-        lines.append("\n## 质量评估\n")
+        lines.append("\n## Quality Assessment\n")
         lines.append(self._generate_quality_assessment(steps))
 
-        lines.append("\n## 生成的文件\n")
+        lines.append("\n## Generated Files\n")
         lines.append(self._generate_files_list())
 
         return "".join(lines)
@@ -133,34 +133,34 @@ class Reporter:
     ) -> str:
         """Generate data overview table."""
         lines = []
-        lines.append(f"| 指标 | 值 |\n")
-        lines.append(f"|------|-----|\n")
-        lines.append(f"| 细胞数 | {adata.n_obs:,} |\n")
-        lines.append(f"| 基因数 | {adata.n_vars:,} |\n")
+        lines.append(f"| Metric | Value |\n")
+        lines.append(f"|--------|-------|\n")
+        lines.append(f"| Cells | {adata.n_obs:,} |\n")
+        lines.append(f"| Genes | {adata.n_vars:,} |\n")
 
         if hasattr(adata, "obs"):
             if "n_genes" in adata.obs:
                 mean_genes = adata.obs["n_genes"].mean()
-                lines.append(f"| 平均基因数 | {mean_genes:.0f} |\n")
+                lines.append(f"| Mean genes per cell | {mean_genes:.0f} |\n")
 
             if "n_counts" in adata.obs:
                 mean_counts = adata.obs["n_counts"].mean()
-                lines.append(f"| 平均UMI计数 | {mean_counts:.0f} |\n")
+                lines.append(f"| Mean UMI count | {mean_counts:.0f} |\n")
 
         if "leiden" in adata.obs:
             n_clusters = adata.obs["leiden"].nunique()
-            lines.append(f"| 聚类数 | {n_clusters} |\n")
+            lines.append(f"| Clusters | {n_clusters} |\n")
 
         return "".join(lines)
 
     def _generate_steps_table(self, steps: list[Any]) -> str:
         """Generate analysis steps table."""
         if not steps:
-            return "*无分析步骤记录*"
+            return "*No analysis steps recorded*"
 
         lines = []
-        lines.append("| 步骤 | 状态 | Skill | 指标 |\n")
-        lines.append("|------|------|-------|------|\n")
+        lines.append("| Step | Status | Skill | Metrics |\n")
+        lines.append("|------|--------|-------|---------|\n")
 
         for step in steps:
             step_num = step.step if hasattr(step, "step") else "?"
@@ -180,8 +180,8 @@ class Reporter:
         """Generate clustering results table."""
         lines = []
 
-        lines.append("| Cluster | 细胞数 | 百分比 |\n")
-        lines.append("|--------|--------|--------|\n")
+        lines.append("| Cluster | Cells | Percentage |\n")
+        lines.append("|---------|-------|------------|\n")
 
         cluster_counts = adata.obs["leiden"].value_counts().sort_index()
         for cluster, count in cluster_counts.items():
@@ -234,12 +234,12 @@ class Reporter:
         )
         failed_steps = total_steps - successful_steps
 
-        lines.append(f"- 总步骤数: {total_steps}\n")
-        lines.append(f"- 成功步骤: {successful_steps}\n")
-        lines.append(f"- 失败步骤: {failed_steps}\n")
+        lines.append(f"- Total steps: {total_steps}\n")
+        lines.append(f"- Successful steps: {successful_steps}\n")
+        lines.append(f"- Failed steps: {failed_steps}\n")
 
         if failed_steps > 0:
-            lines.append("\n**失败详情:**\n")
+            lines.append("\n**Failure details:**\n")
             for step in steps:
                 if not step.observation.get("success"):
                     skill = step.skill_id or "unknown"
@@ -254,7 +254,7 @@ class Reporter:
         lines = []
 
         if not self.output_dir.exists():
-            return "*输出目录不存在*"
+            return "*Output directory does not exist*"
 
         for root, dirs, files in os.walk(self.output_dir):
             root_path = Path(root)
@@ -270,7 +270,7 @@ class Reporter:
                 lines.append(f"- {rel_path} ({size_str})\n")
 
         if not lines:
-            lines.append("*无生成文件*\n")
+            lines.append("*No generated files*\n")
 
         return "".join(lines)
 

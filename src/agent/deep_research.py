@@ -153,21 +153,21 @@ class DeepResearchEngine:
                     focus_areas.append({
                         "type": "cluster_analysis",
                         "target": None,
-                        "reason": "基于聚类结果进行深入分析",
+                        "reason": "Deep analysis based on clustering results",
                         "methods": ["marker_analysis", "cell_annotation", "subclustering"],
                     })
                 elif "deg" in step_name.lower() or "differential" in step_name.lower():
                     focus_areas.append({
                         "type": "marker_validation",
                         "target": None,
-                        "reason": "基于差异表达结果验证标记基因",
+                        "reason": "Validate marker genes based on differential expression results",
                         "methods": ["enrichment_analysis", "literature_search"],
                     })
                 elif "trajectory" in step_name.lower():
                     focus_areas.append({
                         "type": "trajectory_exploration",
                         "target": None,
-                        "reason": "基于轨迹分析结果深入探索",
+                        "reason": "Further exploration based on trajectory analysis results",
                         "methods": ["velocity_analysis", "branch_analysis"],
                     })
 
@@ -175,7 +175,7 @@ class DeepResearchEngine:
             focus_areas.append({
                 "type": "general_exploration",
                 "target": None,
-                "reason": "基于初步分析结果进行全面深入研究",
+                "reason": "Comprehensive deep exploration based on initial analysis results",
                 "methods": ["marker_analysis", "cell_annotation", "trajectory_exploration"],
             })
 
@@ -202,20 +202,20 @@ class DeepResearchEngine:
             area_type = area.get("type", "")
             if area_type == "cluster_analysis":
                 suggestions.append(
-                    f"深入分析聚类{area.get('target')}: {area.get('reason', '')}"
+                    f"Deep analysis of cluster {area.get('target')}: {area.get('reason', '')}"
                 )
             elif area_type == "marker_validation":
                 genes = area.get("target", []) or []
                 if genes:
                     genes = genes[:3]
                     suggestions.append(
-                        f"验证标记基因 {', '.join(genes)} 的细胞类型"
+                        f"Validate cell types for marker genes {', '.join(genes)}"
                     )
                 else:
-                    suggestions.append("验证标记基因的细胞类型")
+                    suggestions.append("Validate cell types for marker genes")
             elif area_type == "trajectory_exploration":
                 suggestions.append(
-                    f"探索{area.get('target', '细胞群')}的发育轨迹"
+                    f"Explore developmental trajectory of {area.get('target', 'cell population')}"
                 )
 
         return suggestions
@@ -265,10 +265,10 @@ class DeepResearchEngine:
         elif focus_type == "general_exploration":
             result = DeepResearchResult(
                 round=round_num,
-                focus="全面深入研究",
+                focus="Comprehensive deep exploration",
                 methods=focus_area.get("methods", ["marker_analysis", "cell_annotation"]),
                 findings=[],
-                conclusions=["进行全面深入的探索性分析"],
+                conclusions=["Perform comprehensive exploratory analysis"],
                 figures_generated=[],
                 new_steps=["marker_analysis", "cell_annotation", "enrichment_analysis"],
             )
@@ -278,7 +278,7 @@ class DeepResearchEngine:
                 focus=str(focus_area),
                 methods=[],
                 findings=[],
-                conclusions=["未识别的分析类型"],
+                conclusions=["Unrecognized analysis type"],
                 figures_generated=[],
                 new_steps=[],
             )
@@ -304,16 +304,16 @@ class DeepResearchEngine:
 
         if memory:
             memory.add_finding(
-                f"开始深入分析聚类 {cluster_id}",
+                f"Starting deep analysis of cluster {cluster_id}",
                 category="deep_research",
                 importance="high",
             )
 
-        conclusions.append(f"聚类 {cluster_id} 详细分析完成")
+        conclusions.append(f"Cluster {cluster_id} detailed analysis complete")
 
         return DeepResearchResult(
             round=len(self.research_history) + 1,
-            focus=f"聚类 {cluster_id} 详细分析",
+            focus=f"Cluster {cluster_id} detailed analysis",
             methods=methods_used,
             findings=findings,
             conclusions=conclusions,
@@ -340,18 +340,18 @@ class DeepResearchEngine:
 
         if memory:
             memory.add_finding(
-                f"验证标记基因: {', '.join(genes[:5])}",
+                f"Validating marker genes: {', '.join(genes[:5])}",
                 category="marker_validation",
                 importance="high",
             )
 
         conclusions.append(
-            f"标记基因 {genes[0] if genes else 'N/A'} 的细胞类型注释完成"
+            f"Cell type annotation for marker gene {genes[0] if genes else 'N/A'} complete"
         )
 
         return DeepResearchResult(
             round=len(self.research_history) + 1,
-            focus=f"标记基因验证: {', '.join(genes[:3])}",
+            focus=f"Marker gene validation: {', '.join(genes[:3])}",
             methods=methods_used,
             findings=findings,
             conclusions=conclusions,
@@ -378,16 +378,16 @@ class DeepResearchEngine:
 
         if memory:
             memory.add_finding(
-                f"探索细胞群 {cell_group} 的发育轨迹",
+                f"Exploring developmental trajectory of cell population {cell_group}",
                 category="trajectory",
                 importance="high",
             )
 
-        conclusions.append(f"细胞群 {cell_group} 的发育轨迹分析完成")
+        conclusions.append(f"Developmental trajectory analysis of cell population {cell_group} complete")
 
         return DeepResearchResult(
             round=len(self.research_history) + 1,
-            focus=f"发育轨迹分析: {cell_group}",
+            focus=f"Developmental trajectory analysis: {cell_group}",
             methods=methods_used,
             findings=findings,
             conclusions=conclusions,
@@ -410,27 +410,27 @@ class DeepResearchEngine:
         results = results or self.research_history
         lines = []
 
-        lines.append("## 深度分析章节\n")
+        lines.append("## Deep Analysis\n")
 
         for result in results:
-            lines.append(f"### 第 {result.round} 轮：{result.focus}\n")
+            lines.append(f"### Round {result.round}: {result.focus}\n")
 
-            lines.append("**使用的分析方法:**")
+            lines.append("**Methods used:**")
             for method in result.methods:
                 lines.append(f"- {method}")
 
             if result.findings:
-                lines.append("\n**发现:**")
+                lines.append("\n**Findings:**")
                 for finding in result.findings:
                     lines.append(f"- {finding}")
 
             if result.conclusions:
-                lines.append("\n**结论:**")
+                lines.append("\n**Conclusions:**")
                 for conclusion in result.conclusions:
                     lines.append(f"- {conclusion}")
 
             if result.figures_generated:
-                lines.append("\n**生成图表:**")
+                lines.append("\n**Generated figures:**")
                 for fig in result.figures_generated:
                     lines.append(f"- {fig}")
 
@@ -446,16 +446,16 @@ class DeepResearchEngine:
             Human-readable summary string.
         """
         if not self.research_history:
-            return "尚未进行深度研究"
+            return "No deep research conducted yet"
 
         lines = []
-        lines.append(f"已进行 {len(self.research_history)} 轮深度研究：\n")
+        lines.append(f"Completed {len(self.research_history)} round(s) of deep research:\n")
 
         for result in self.research_history:
             lines.append(f"{result.round}. **{result.focus}**")
-            lines.append(f"   - 方法: {', '.join(result.methods)}")
+            lines.append(f"   - Methods: {', '.join(result.methods)}")
             if result.conclusions:
-                lines.append(f"   - 结论: {result.conclusions[0]}")
+                lines.append(f"   - Conclusion: {result.conclusions[0]}")
 
         return "\n".join(lines)
 

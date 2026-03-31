@@ -81,39 +81,39 @@ class NumericValidator:
         n_genes = adata.n_vars if adata else 0
 
         if n_cells < self.min_cells:
-            issues.append(f"细胞数过少: {n_cells} < {self.min_cells}")
+            issues.append(f"Too few cells: {n_cells} < {self.min_cells}")
         if n_cells > self.max_cells:
-            issues.append(f"细胞数过多: {n_cells} > {self.max_cells}")
+            issues.append(f"Too many cells: {n_cells} > {self.max_cells}")
 
         if n_genes < self.min_genes:
-            issues.append(f"基因数过少: {n_genes} < {self.min_genes}")
+            issues.append(f"Too few genes: {n_genes} < {self.min_genes}")
         if n_genes > self.max_genes:
-            issues.append(f"基因数过多: {n_genes} > {self.max_genes}")
+            issues.append(f"Too many genes: {n_genes} > {self.max_genes}")
 
         if hasattr(adata, "obs"):
             if "total_counts" in adata.obs:
                 total_counts = adata.obs["total_counts"]
                 if total_counts.max() > 100000:
                     suggestions.append(
-                        "检测到异常高的总计数，可能存在双细胞"
+                        "Abnormally high total counts detected, possible doublets"
                     )
 
             if "pct_counts_mito" in adata.obs:
                 mito_pct = adata.obs["pct_counts_mito"]
                 if mito_pct.max() > self.max_mito_pct:
                     issues.append(
-                        f"线粒体基因比例过高: 最大值 {mito_pct.max():.1f}%"
+                        f"Mitochondrial gene percentage too high: max {mito_pct.max():.1f}%"
                     )
 
         if "X_pca" in adata.obsm:
             n_pcs = adata.obsm["X_pca"].shape[1]
             if n_pcs < 5:
-                suggestions.append(f"PCA成分数过少: {n_pcs}")
+                suggestions.append(f"Too few PCA components: {n_pcs}")
 
         if "X_umap" in adata.obsm:
             umap_shape = adata.obsm["X_umap"].shape
             if umap_shape[1] != 2:
-                issues.append(f"UMAP维度错误: 期望2维，得到{umap_shape[1]}维")
+                issues.append(f"UMAP dimension error: expected 2, got {umap_shape[1]}")
 
         return ValidationResult(
             valid=len(issues) == 0,
@@ -143,7 +143,7 @@ class NumericValidator:
         suggestions = []
 
         if cluster_key not in adata.obs:
-            issues.append(f"聚类结果不存在: {cluster_key}")
+            issues.append(f"Clustering results not found: {cluster_key}")
             return ValidationResult(
                 valid=False, issues=issues, suggestions=[], details={}
             )
@@ -152,16 +152,16 @@ class NumericValidator:
         n_cells = adata.n_obs
 
         if n_clusters < 2:
-            issues.append("只检测到1个聚类，可能聚类失败")
+            issues.append("Only 1 cluster detected, clustering may have failed")
         if n_clusters > n_cells / 2:
-            issues.append(f"聚类数过多 ({n_clusters})，可能存在过度聚类")
+            issues.append(f"Too many clusters ({n_clusters}), possible over-clustering")
         if n_clusters > 100:
-            suggestions.append("聚类数较多 (>100)，建议检查参数是否合适")
+            suggestions.append("Large number of clusters (>100), consider checking parameters")
 
         cluster_sizes = adata.obs[cluster_key].value_counts()
         if (cluster_sizes < 5).sum() > n_clusters / 2:
             suggestions.append(
-                "存在较多小型聚类 (细胞数<5)，可能需要过滤异常细胞"
+                "Many small clusters (cells<5), consider filtering outlier cells"
             )
 
         return ValidationResult(
@@ -191,7 +191,7 @@ class NumericValidator:
         suggestions = []
 
         if key not in adata.uns:
-            issues.append("差异表达结果不存在")
+            issues.append("Differential expression results not found")
             return ValidationResult(
                 valid=False, issues=issues, suggestions=[], details={}
             )
@@ -199,16 +199,16 @@ class NumericValidator:
         deg_result = adata.uns[key]
 
         if len(deg_result) == 0:
-            issues.append("差异表达结果为空")
+            issues.append("Differential expression results are empty")
 
         for group in list(deg_result.keys())[:5]:
             if "names" not in deg_result[group]:
                 continue
             n_degs = len(deg_result[group]["names"])
             if n_degs == 0:
-                suggestions.append(f"组 {group} 没有显著差异基因")
+                suggestions.append(f"Group {group} has no significant DEGs")
             elif n_degs < 10:
-                suggestions.append(f"组 {group} 差异基因数较少 ({n_degs})")
+                suggestions.append(f"Group {group} has few DEGs ({n_degs})")
 
         return ValidationResult(
             valid=len(issues) == 0,
@@ -279,24 +279,24 @@ class VisualValidator:
             logger.exception("Visual validation failed")
             return ValidationResult(
                 valid=False,
-                issues=[f"视觉校验失败: {e}"],
-                suggestions=["检查图片是否正常生成"],
+                issues=[f"Visual validation failed: {e}"],
+                suggestions=["Check if the image was generated correctly"],
                 details={},
             )
 
     def _build_validation_prompt(self, expected_content: str | None) -> str:
         """Build prompt for vision model."""
-        prompt = """你是一个单细胞数据分析专家。请检查这张图片：
+        prompt = """You are a single-cell data analysis expert. Please inspect this image:
 
-1. 图片是否正常生成（不是空白或错误图片）？
-2. 单细胞分析图表是否清晰可读？
-3. 是否有明显的异常（如坐标轴错误、标签重叠、颜色问题）？
-4. 是否符合单细胞数据分析图表的标准？
+1. Was the image generated correctly (not blank or an error image)?
+2. Is the single-cell analysis plot clear and readable?
+3. Are there any obvious anomalies (e.g., axis errors, label overlap, color issues)?
+4. Does it meet the standards for single-cell data analysis plots?
 
-请给出简要评估：合格/需要修改，并说明原因。
+Please provide a brief assessment: Acceptable / Needs revision, with reasoning.
 """
         if expected_content:
-            prompt += f"\n预期内容: {expected_content}"
+            prompt += f"\nExpected content: {expected_content}"
 
         return prompt
 
@@ -307,17 +307,17 @@ class VisualValidator:
 
         response_lower = response.lower()
 
-        if "空白" in response or "empty" in response_lower or "blank" in response_lower:
-            issues.append("图片为空白或未正确生成")
+        if "empty" in response_lower or "blank" in response_lower:
+            issues.append("Image is blank or not generated correctly")
 
-        if "错误" in response or "error" in response_lower:
-            issues.append("检测到图片生成错误")
+        if "error" in response_lower:
+            issues.append("Image generation error detected")
 
-        if "标签重叠" in response or "overlap" in response_lower:
-            suggestions.append("图表存在标签重叠问题")
+        if "overlap" in response_lower:
+            suggestions.append("Plot has label overlap issues")
 
-        if "坐标轴错误" in response:
-            issues.append("坐标轴存在问题")
+        if "axis error" in response_lower or "axis problem" in response_lower:
+            issues.append("Axis issues detected")
 
         valid = len(issues) == 0
 
@@ -330,17 +330,17 @@ class VisualValidator:
 
     def validate_umap(self, image_path: str | Path) -> ValidationResult:
         """Validate UMAP plot."""
-        expected = "单细胞UMAP图，应显示清晰的细胞群分离"
+        expected = "Single-cell UMAP plot showing clear separation of cell populations"
         return self.validate(image_path, expected)
 
     def validate_heatmap(self, image_path: str | Path) -> ValidationResult:
         """Validate heatmap plot."""
-        expected = "差异基因热图，应显示清晰的基因表达模式"
+        expected = "Differentially expressed genes heatmap showing clear expression patterns"
         return self.validate(image_path, expected)
 
     def validate_dotplot(self, image_path: str | Path) -> ValidationResult:
         """Validate dotplot."""
-        expected = "基因表达dotplot，应显示各聚类的marker基因"
+        expected = "Gene expression dotplot showing marker genes for each cluster"
         return self.validate(image_path, expected)
 
 

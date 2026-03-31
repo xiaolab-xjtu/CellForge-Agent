@@ -27,38 +27,34 @@ class DataConsistencyChecker:
     def __init__(self) -> None:
         """Initialize checker with species and tissue patterns."""
         self.species_patterns = {
-            "human": ["human", "homo sapiens", "humanized", "人"],
-            "mouse": ["mouse", "mus musculus", "murine", "小鼠"],
-            "rat": ["rat", "rattus", "大鼠"],
-            "both": ["human mouse", "xenograft", "异种", "cross-species"],
+            "human": ["human", "homo sapiens", "humanized"],
+            "mouse": ["mouse", "mus musculus", "murine"],
+            "rat": ["rat", "rattus"],
+            "both": ["human mouse", "xenograft", "cross-species"],
         }
 
         self.tissue_patterns = {
             "PBMC": [
                 "pbmc",
                 "peripheral blood mononuclear",
-                "外周血",
                 "blood",
-                "血液",
             ],
-            "tumor": ["tumor", "cancer", "carcinoma", "肿瘤", "恶性"],
+            "tumor": ["tumor", "cancer", "carcinoma", "malignant"],
             "brain": [
                 "brain",
                 "neuron",
                 "cortex",
-                "脑",
-                "神经",
                 "hippocampus",
             ],
-            "lung": ["lung", "pulmonary", "肺", "alveolar"],
-            "liver": ["liver", "hepatic", "肝", "hepatocyte"],
-            "kidney": ["kidney", "renal", "肾", "nephron"],
-            "heart": ["heart", "cardiac", "心肌", "心"],
-            "spleen": ["spleen", "splenic", "脾脏"],
-            "bone_marrow": ["bone marrow", "bmc", "骨髓"],
-            "breast": ["breast", "mammary", "乳腺"],
-            "skin": ["skin", "dermal", "皮肤"],
-            "intestinal": ["intestine", "intestinal", "gut", "肠", "colon"],
+            "lung": ["lung", "pulmonary", "alveolar"],
+            "liver": ["liver", "hepatic", "hepatocyte"],
+            "kidney": ["kidney", "renal", "nephron"],
+            "heart": ["heart", "cardiac"],
+            "spleen": ["spleen", "splenic"],
+            "bone_marrow": ["bone marrow", "bmc"],
+            "breast": ["breast", "mammary"],
+            "skin": ["skin", "dermal"],
+            "intestinal": ["intestine", "intestinal", "gut", "colon"],
         }
 
         self.disease_patterns = {
@@ -67,26 +63,21 @@ class DataConsistencyChecker:
                 "tumor",
                 "carcinoma",
                 "malignant",
-                "肿瘤",
-                "恶性",
                 "melanoma",
             ],
-            "COVID": ["covid", "sars-cov-2", "新冠", "coronavirus"],
+            "COVID": ["covid", "sars-cov-2", "coronavirus"],
             "autoimmune": [
                 "autoimmune",
                 "lupus",
                 "rheumatoid",
-                "风湿",
-                "类风湿",
             ],
-            "diabetes": ["diabetes", "diabetic", "糖尿病"],
+            "diabetes": ["diabetes", "diabetic"],
             "neurodegenerative": [
                 "alzheimer",
                 "parkinson",
                 "neurodegenerative",
-                "神经退行",
             ],
-            "fibrosis": ["fibrosis", "fibrotic", "纤维化"],
+            "fibrosis": ["fibrosis", "fibrotic"],
         }
 
     def check(
@@ -127,12 +118,12 @@ class DataConsistencyChecker:
         existing_analysis = self.check_existing_analysis(adata)
         if existing_analysis["has_analysis"]:
             suggestions.append(
-                f"数据已包含分析结果: {', '.join(existing_analysis['types'])}"
+                f"Data already contains analysis results: {', '.join(existing_analysis['types'])}"
             )
 
         research_keywords = self.extract_research_keywords(research)
         if research_keywords:
-            suggestions.append(f"研究关键词: {', '.join(research_keywords)}")
+            suggestions.append(f"Research keywords: {', '.join(research_keywords)}")
 
         all_consistent = len(issues) == 0
 
@@ -180,8 +171,8 @@ class DataConsistencyChecker:
             ):
                 return {
                     "consistent": False,
-                    "issue": f"物种不匹配: 背景描述为{self._species_name(bg_species)}，"
-                    f"数据推断为{self._species_name(data_species)}",
+                    "issue": f"Species mismatch: background describes {self._species_name(bg_species)}, "
+                    f"data inferred as {self._species_name(data_species)}",
                     "background_species": bg_species,
                     "data_species": data_species,
                 }
@@ -274,8 +265,8 @@ class DataConsistencyChecker:
         if bg_tissue and data_tissue and bg_tissue != data_tissue:
             return {
                 "consistent": False,
-                "warning": f"组织类型可能不匹配: 背景描述为{bg_tissue}，"
-                f"数据marker指向{data_tissue}",
+                "warning": f"Tissue type may not match: background describes {bg_tissue}, "
+                f"data markers suggest {data_tissue}",
                 "background_tissue": bg_tissue,
                 "data_tissue": data_tissue,
             }
@@ -340,13 +331,13 @@ class DataConsistencyChecker:
         if n_cells < 100:
             return {
                 "acceptable": False,
-                "warning": f"细胞数过少 ({n_cells})，可能无法进行可靠分析",
+                "warning": f"Too few cells ({n_cells}), reliable analysis may not be possible",
                 "n_cells": n_cells,
             }
         elif n_cells > 1000000:
             return {
                 "acceptable": False,
-                "warning": f"细胞数过多 ({n_cells})，可能需要降采样处理",
+                "warning": f"Too many cells ({n_cells}), downsampling may be required",
                 "n_cells": n_cells,
             }
 
@@ -367,13 +358,13 @@ class DataConsistencyChecker:
         if n_genes < 500:
             return {
                 "acceptable": False,
-                "warning": f"基因数过少 ({n_genes})，可能数据质量有问题",
+                "warning": f"Too few genes ({n_genes}), possible data quality issues",
                 "n_genes": n_genes,
             }
         elif n_genes > 60000:
             return {
                 "acceptable": False,
-                "warning": f"基因数过多 ({n_genes})，可能包含非编码RNA",
+                "warning": f"Too many genes ({n_genes}), may include non-coding RNA",
                 "n_genes": n_genes,
             }
 
@@ -413,23 +404,23 @@ class DataConsistencyChecker:
         if "leiden" in adata.obs:
             existing["has_analysis"] = True
             n_clusters = adata.obs["leiden"].nunique()
-            existing["types"].append(f"Leiden聚类 ({n_clusters} clusters)")
+            existing["types"].append(f"Leiden clustering ({n_clusters} clusters)")
             existing["details"]["leiden"] = n_clusters
 
         if "louvain" in adata.obs:
             existing["has_analysis"] = True
             n_clusters = adata.obs["louvain"].nunique()
-            existing["types"].append(f"Louvain聚类 ({n_clusters} clusters)")
+            existing["types"].append(f"Louvain clustering ({n_clusters} clusters)")
             existing["details"]["louvain"] = n_clusters
 
         if "rank_genes_groups" in adata.uns:
             existing["has_analysis"] = True
-            existing["types"].append("差异表达分析")
+            existing["types"].append("Differential expression analysis")
             existing["details"]["deg"] = True
 
         if "cell_type" in adata.obs or "celltype" in adata.obs:
             existing["has_analysis"] = True
-            existing["types"].append("细胞类型注释")
+            existing["types"].append("Cell type annotation")
             existing["details"]["annotated"] = True
 
         return existing
@@ -455,39 +446,27 @@ class DataConsistencyChecker:
                     break
 
         research_upper = research.upper()
-        research_chinese = re.findall(r"[\u4e00-\u9fff]+", research)
 
         important_patterns = [
             "comparison",
             "compare",
             "comparative",
-            "比较",
             "trajectory",
             "pseudotime",
-            "轨迹",
-            "发育",
             "cell-cell communication",
             "cellphone",
-            "配体受体",
-            "通讯",
             "subtype",
-            "亚型",
             "heterogeneity",
-            "异质性",
             "marker",
             "marker gene",
-            "marker基因",
             "treatment",
             "therapy",
-            "治疗",
-            "药物",
         ]
 
         for pattern in important_patterns:
             if (
                 pattern.lower() in research_lower
                 or pattern.upper() in research_upper
-                or pattern in research_chinese
             ):
                 if pattern not in keywords:
                     keywords.append(pattern)
@@ -497,10 +476,10 @@ class DataConsistencyChecker:
     def _species_name(self, code: str) -> str:
         """Convert species code to readable name."""
         names = {
-            "human": "人类 (Human)",
-            "mouse": "小鼠 (Mouse)",
-            "rat": "大鼠 (Rat)",
-            "both": "混合/异种移植",
+            "human": "Human",
+            "mouse": "Mouse",
+            "rat": "Rat",
+            "both": "Mixed/Xenograft",
         }
         return names.get(code, code)
 
@@ -517,18 +496,18 @@ class DataConsistencyChecker:
         lines = []
 
         if check_result["consistent"]:
-            lines.append("✓ 数据与背景描述基本一致")
+            lines.append("✓ Data is consistent with background description")
         else:
-            lines.append("✗ 发现数据与背景描述不一致的问题:")
+            lines.append("✗ Inconsistencies found between data and background description:")
 
         for issue in check_result["issues"]:
-            lines.append(f"  - 问题: {issue}")
+            lines.append(f"  - Issue: {issue}")
 
         for warning in check_result["warnings"]:
-            lines.append(f"  - 警告: {warning}")
+            lines.append(f"  - Warning: {warning}")
 
         if check_result["suggestions"]:
-            lines.append("\n建议:")
+            lines.append("\nSuggestions:")
             for i, suggestion in enumerate(check_result["suggestions"], 1):
                 lines.append(f"  {i}. {suggestion}")
 

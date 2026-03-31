@@ -56,18 +56,18 @@ def main():
     """Main application."""
     init_session_state()
 
-    st.title("🔬 CellForge Agent - 单细胞转录组分析")
+    st.title("🔬 CellForge Agent - Single-Cell Transcriptomics Analysis")
 
     with st.sidebar:
-        st.header("项目设置")
+        st.header("Project Setup")
 
-        use_remote = st.checkbox("使用远端服务器路径")
+        use_remote = st.checkbox("Use remote server path")
 
         if use_remote:
             remote_path = st.text_input(
-                "远端inputs路径",
+                "Remote inputs path",
                 value=os.getenv("CELLFORGE_INPUTS_PATH", "/path/to/remote/inputs"),
-                help="例如: /mnt/nfs/data/inputs"
+                help="e.g.: /mnt/nfs/data/inputs"
             )
             inputs_base = Path(remote_path)
         else:
@@ -80,21 +80,21 @@ def main():
 
         if project_dirs:
             project_name = st.selectbox(
-                "选择项目",
+                "Select project",
                 options=project_dirs,
                 index=0 if project_dirs else None
             )
         else:
-            project_name = st.text_input("项目名称", value="exampleProject")
+            project_name = st.text_input("Project name", value="exampleProject")
 
         project_path = inputs_base / project_name
         st.session_state.project_path = str(project_path)
 
         st.divider()
 
-        st.subheader("步骤1: 加载数据")
+        st.subheader("Step 1: Load Data")
 
-        if st.button("加载数据文件", type="primary", disabled=st.session_state.data_loaded):
+        if st.button("Load Data File", type="primary", disabled=st.session_state.data_loaded):
             if project_path.exists() and list(project_path.glob("*.h5ad")):
                 config = AgentConfig(
                     skills_root=str(SKILLS_ROOT),
@@ -108,20 +108,20 @@ def main():
                     st.session_state.agent.load_data(h5ad_files[0])
                     st.session_state.output_path = str(OUTPUTS_DIR / project_name)
                     st.session_state.data_loaded = True
-                    st.success(f"数据已加载: {h5ad_files[0].name}")
+                    st.success(f"Data loaded: {h5ad_files[0].name}")
                 else:
-                    st.error("未找到h5ad文件")
+                    st.error("No h5ad file found")
             else:
-                st.error("项目目录不存在或无数据文件")
+                st.error("Project directory not found or no data files")
 
         st.divider()
 
-        st.subheader("步骤2: 背景和研究")
+        st.subheader("Step 2: Background and Research")
 
         if not st.session_state.data_loaded:
-            st.info("请先加载数据文件")
+            st.info("Please load data file first")
         else:
-            use_manual_bg = st.checkbox("手动输入背景和研究")
+            use_manual_bg = st.checkbox("Manually enter background and research")
 
             bg_file = project_path / "background.txt"
             if not bg_file.exists():
@@ -136,51 +136,51 @@ def main():
                 if bg_file.exists():
                     with open(bg_file, 'r', encoding='utf-8') as f:
                         background = f.read()
-                    st.success(f"已从文件加载背景")
+                    st.success("Background loaded from file")
                 else:
-                    st.warning("未找到background.txt")
+                    st.warning("background.txt not found")
 
                 if research_file.exists():
                     with open(research_file, 'r', encoding='utf-8') as f:
                         research = f.read()
-                    st.success(f"已从文件加载研究")
+                    st.success("Research loaded from file")
                 else:
-                    st.warning("未找到Research.txt")
+                    st.warning("Research.txt not found")
             else:
-                background = st.text_area("研究背景", height=80)
-                research = st.text_area("研究问题", height=80)
+                background = st.text_area("Research Background", height=80)
+                research = st.text_area("Research Question", height=80)
 
-            if st.button("应用背景和研究", disabled=st.session_state.background_loaded):
+            if st.button("Apply Background and Research", disabled=st.session_state.background_loaded):
                 if st.session_state.agent:
                     st.session_state.agent._background = background
                     st.session_state.agent._research = research
                     st.session_state.background_loaded = True
-                    st.success("背景和研究已应用")
+                    st.success("Background and research applied")
 
         st.divider()
 
         if st.session_state.background_loaded:
-            st.success("✓ 数据和背景已就绪")
+            st.success("✓ Data and background ready")
 
         if st.session_state.agent and st.session_state.agent.manifest:
-            st.subheader("可用技能")
+            st.subheader("Available Skills")
             for item in st.session_state.agent.manifest[:10]:
                 st.caption(f"- {item['id']}")
 
         st.caption("CellForge Agent v0.2.0")
 
-    tab1, tab2, tab3 = st.tabs(["📊 分析控制", "📈 结果展示", "💬 聊天交互"])
+    tab1, tab2, tab3 = st.tabs(["📊 Analysis Control", "📈 Results", "💬 Chat"])
 
     with tab1:
-        from src.frontend.pages.分析控制 import render
+        from src.frontend.pages.analysis_control import render
         render(st.session_state)
 
     with tab2:
-        from src.frontend.pages.结果展示 import render
+        from src.frontend.pages.result_display import render
         render(st.session_state)
 
     with tab3:
-        from src.frontend.pages.聊天交互 import render
+        from src.frontend.pages.chat_interaction import render
         render(st.session_state)
 
 

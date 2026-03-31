@@ -9,13 +9,13 @@ import re
 
 def render(session_state):
     """Render the chat interaction page."""
-    st.header("💬 聊天交互")
+    st.header("💬 Chat Interaction")
 
     if not session_state.data_loaded:
-        st.info("请先在侧边栏加载数据")
+        st.info("Please load data in the sidebar first")
         return
 
-    st.caption("您可以在这里询问分析结果或提出新的分析要求")
+    st.caption("Ask questions about analysis results or request new analyses here")
 
     if 'messages' not in st.session_state:
         st.session_state.messages = []
@@ -81,43 +81,43 @@ def render(session_state):
 
         user_lower = user_input.lower()
 
-        if any(k in user_lower for k in ['统计', 'statistic', '数据', 'data']):
+        if any(k in user_lower for k in ['statistics', 'statistic', 'data']):
             if agent.adata is not None:
                 adata = agent.adata
-                response_lines.append(f"## 数据统计\n")
-                response_lines.append(f"- **细胞数**: {adata.n_obs:,}")
-                response_lines.append(f"- **基因数**: {adata.n_vars:,}")
+                response_lines.append("## Data Statistics\n")
+                response_lines.append(f"- **Cells**: {adata.n_obs:,}")
+                response_lines.append(f"- **Genes**: {adata.n_vars:,}")
                 if 'leiden' in adata.obs:
-                    response_lines.append(f"- **聚类数**: {adata.obs['leiden'].nunique()}")
+                    response_lines.append(f"- **Clusters**: {adata.obs['leiden'].nunique()}")
                 if 'n_counts' in adata.obs:
-                    response_lines.append(f"- **平均UMI**: {adata.obs['n_counts'].mean():.0f}")
+                    response_lines.append(f"- **Mean UMI**: {adata.obs['n_counts'].mean():.0f}")
 
-        if any(k in user_lower for k in ['聚类', 'cluster']):
+        if any(k in user_lower for k in ['cluster', 'clustering']):
             if agent.adata is not None and 'leiden' in agent.adata.obs:
                 clusters = agent.adata.obs['leiden'].value_counts()
-                response_lines.append(f"\n## 聚类结果\n")
+                response_lines.append("\n## Clustering Results\n")
                 for cl, count in clusters.items():
-                    response_lines.append(f"- Cluster {cl}: {count:,} 细胞 ({count/agent.adata.n_obs*100:.1f}%)")
+                    response_lines.append(f"- Cluster {cl}: {count:,} cells ({count/agent.adata.n_obs*100:.1f}%)")
 
-        if any(k in user_lower for k in ['报告', 'report', '总结']):
+        if any(k in user_lower for k in ['report', 'summary']):
             report = agent.generate_report()
             return report
 
-        if any(k in user_lower for k in ['可用技能', 'skills', '工具']):
+        if any(k in user_lower for k in ['skills', 'tools', 'available']):
             skills = agent.get_available_skills()
-            response_lines.append(f"\n## 可用技能 ({len(skills)}个)\n")
+            response_lines.append(f"\n## Available Skills ({len(skills)})\n")
             for skill in skills[:15]:
                 response_lines.append(f"- **{skill['name']}**: {skill.get('description', 'N/A')}")
             if len(skills) > 15:
-                response_lines.append(f"\n... 还有 {len(skills) - 15} 个技能")
+                response_lines.append(f"\n... and {len(skills) - 15} more skills")
 
         if not response_lines:
-            response_lines.append("我收到了您的消息: " + user_input)
-            response_lines.append("\n\n您可以尝试询问:")
-            response_lines.append("- 数据统计信息")
-            response_lines.append("- 聚类结果")
-            response_lines.append("- 生成分析报告")
-            response_lines.append("- 查看可用技能")
+            response_lines.append("Received your message: " + user_input)
+            response_lines.append("\n\nYou can try asking:")
+            response_lines.append("- Data statistics")
+            response_lines.append("- Clustering results")
+            response_lines.append("- Generate analysis report")
+            response_lines.append("- View available skills")
 
         return "\n".join(response_lines)
 
@@ -140,7 +140,7 @@ def render(session_state):
                     if timestamp:
                         st.caption(f"{timestamp}")
 
-    user_input = st.chat_input("输入您的问题或指令...")
+    user_input = st.chat_input("Enter your question or instruction...")
 
     if user_input:
         st.session_state.messages.append({
@@ -153,7 +153,7 @@ def render(session_state):
             st.markdown(user_input)
             st.caption(datetime.now().strftime("%H:%M:%S"))
 
-        with st.spinner("思考中..."):
+        with st.spinner("Thinking..."):
             response = generate_response(user_input)
 
         st.session_state.messages.append({
@@ -170,12 +170,12 @@ def render(session_state):
 
     st.divider()
 
-    with st.expander("💡 快捷指令"):
+    with st.expander("💡 Quick Commands"):
         col1, col2 = st.columns(2)
 
         with col1:
-            if st.button("📊 显示数据统计", width="stretch"):
-                prompt = "显示数据统计"
+            if st.button("📊 Show Data Statistics", width="stretch"):
+                prompt = "Show data statistics"
                 st.session_state.messages.append({
                     "role": "user",
                     "content": prompt,
@@ -189,8 +189,8 @@ def render(session_state):
                 })
                 st.rerun()
 
-            if st.button("🔬 查看聚类结果", width="stretch"):
-                prompt = "查看聚类结果"
+            if st.button("🔬 View Clustering Results", width="stretch"):
+                prompt = "Show clustering results"
                 st.session_state.messages.append({
                     "role": "user",
                     "content": prompt,
@@ -205,8 +205,8 @@ def render(session_state):
                 st.rerun()
 
         with col2:
-            if st.button("📝 生成报告摘要", width="stretch"):
-                prompt = "生成报告"
+            if st.button("📝 Generate Report Summary", width="stretch"):
+                prompt = "Generate report"
                 st.session_state.messages.append({
                     "role": "user",
                     "content": prompt,
@@ -220,8 +220,8 @@ def render(session_state):
                 })
                 st.rerun()
 
-            if st.button("🛠️ 查看可用技能", width="stretch"):
-                prompt = "查看可用技能"
+            if st.button("🛠️ View Available Skills", width="stretch"):
+                prompt = "Show available skills"
                 st.session_state.messages.append({
                     "role": "user",
                     "content": prompt,
@@ -235,6 +235,6 @@ def render(session_state):
                 })
                 st.rerun()
 
-    if st.button("🗑️ 清除聊天历史"):
+    if st.button("🗑️ Clear Chat History"):
         st.session_state.messages = []
         st.rerun()

@@ -9,46 +9,46 @@ import pandas as pd
 
 def render(session_state):
     """Render the result display page."""
-    st.header("📈 结果展示")
+    st.header("📈 Results")
 
     if not session_state.data_loaded:
-        st.info("请先在侧边栏加载数据")
+        st.info("Please load data in the sidebar first")
         return
 
     output_path = Path(session_state.get('output_path', session_state.project_path))
 
     if not session_state.analysis_complete:
-        st.info("分析尚未完成，请在分析控制页面执行分析")
+        st.info("Analysis not yet complete. Run analysis from the Analysis Control tab")
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 数据统计", "🖼️ 图表", "📋 表格", "📝 报告", "💾 下载"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Data Stats", "🖼️ Figures", "📋 Tables", "📝 Report", "💾 Download"])
 
     with tab1:
-        st.subheader("数据概况")
+        st.subheader("Data Overview")
 
         if session_state.agent and session_state.agent.adata is not None:
             adata = session_state.agent.adata
 
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("细胞数", f"{adata.n_obs:,}")
+                st.metric("Cells", f"{adata.n_obs:,}")
             with col2:
-                st.metric("基因数", f"{adata.n_vars:,}")
+                st.metric("Genes", f"{adata.n_vars:,}")
             with col3:
                 if 'leiden' in adata.obs:
-                    st.metric("聚类数", adata.obs['leiden'].nunique())
+                    st.metric("Clusters", adata.obs['leiden'].nunique())
                 else:
-                    st.metric("聚类数", "N/A")
+                    st.metric("Clusters", "N/A")
             with col4:
                 if 'n_counts' in adata.obs:
-                    st.metric("平均UMI", f"{adata.obs['n_counts'].mean():.0f}")
+                    st.metric("Mean UMI", f"{adata.obs['n_counts'].mean():.0f}")
                 elif 'total_counts' in adata.obs:
-                    st.metric("平均UMI", f"{adata.obs['total_counts'].mean():.0f}")
+                    st.metric("Mean UMI", f"{adata.obs['total_counts'].mean():.0f}")
                 else:
-                    st.metric("平均UMI", "N/A")
+                    st.metric("Mean UMI", "N/A")
 
             st.divider()
 
-            st.subheader("分析历史")
+            st.subheader("Analysis History")
             for step in session_state.agent.steps:
                 success = step.observation.get("success", False)
                 icon = "✓" if success else "✗"
@@ -58,10 +58,10 @@ def render(session_state):
                     st.caption(f"   {str(metrics)[:100]}")
 
         else:
-            st.info("未加载数据")
+            st.info("No data loaded")
 
     with tab2:
-        st.subheader("生成的图表")
+        st.subheader("Generated Figures")
 
         figures_dir = output_path / "Figures"
         if figures_dir.exists():
@@ -69,7 +69,7 @@ def render(session_state):
 
             if figure_files:
                 selected_fig = st.selectbox(
-                    "选择图表",
+                    "Select figure",
                     [f.name for f in figure_files]
                 )
 
@@ -79,18 +79,18 @@ def render(session_state):
                 with open(fig_path, "rb") as f:
                     img_data = f.read()
                 st.download_button(
-                    "下载此图表",
+                    "Download this figure",
                     img_data,
                     file_name=selected_fig,
                     mime="image/png"
                 )
             else:
-                st.info("暂无图表")
+                st.info("No figures yet")
         else:
-            st.info("图表目录不存在 (分析完成后将自动创建)")
+            st.info("Figures directory does not exist (will be created after analysis)")
 
     with tab3:
-        st.subheader("生成的表格")
+        st.subheader("Generated Tables")
 
         tables_dir = output_path / "Tables"
         if tables_dir.exists():
@@ -98,7 +98,7 @@ def render(session_state):
 
             if table_files:
                 selected_table = st.selectbox(
-                    "选择表格",
+                    "Select table",
                     [f.name for f in table_files]
                 )
 
@@ -108,18 +108,18 @@ def render(session_state):
 
                 with open(table_path, 'r', encoding='utf-8') as f:
                     st.download_button(
-                        "下载此表格",
+                        "Download this table",
                         f.read(),
                         file_name=selected_table,
                         mime="text/csv"
                     )
             else:
-                st.info("暂无表格")
+                st.info("No tables yet")
         else:
-            st.info("表格目录不存在 (分析完成后将自动创建)")
+            st.info("Tables directory does not exist (will be created after analysis)")
 
     with tab4:
-        st.subheader("分析报告")
+        st.subheader("Analysis Report")
 
         report_files = list((output_path / "reports").glob("*.md")) if (output_path / "reports").exists() else []
         report_files.extend(list(output_path.glob("Report*.md")))
@@ -134,47 +134,47 @@ def render(session_state):
 
             with open(latest_report, 'r', encoding='utf-8') as f:
                 st.download_button(
-                    "下载报告",
+                    "Download report",
                     f.read(),
                     file_name=latest_report.name,
                     mime="text/markdown"
                 )
         else:
-            st.info("暂无报告 (可点击聊天交互生成)")
+            st.info("No report yet (generate one from the Chat tab)")
 
     with tab5:
-        st.subheader("下载文件")
+        st.subheader("Download Files")
 
         col1, col2 = st.columns(2)
 
         with col1:
-            st.write("**代码文件**")
+            st.write("**Code Files**")
             code_files = list(output_path.glob("*.py"))
             if code_files:
                 for code_file in code_files:
                     with open(code_file, 'r', encoding='utf-8') as f:
                         st.download_button(
-                            f"下载 {code_file.name}",
+                            f"Download {code_file.name}",
                             f.read(),
                             file_name=code_file.name,
                             mime="text/x-python"
                         )
             else:
-                st.info("暂无代码文件")
+                st.info("No code files yet")
 
         with col2:
-            st.write("**检查点数据**")
+            st.write("**Checkpoint Data**")
             checkpoint_files = list((output_path / "checkpoints").glob("*.h5ad")) if (output_path / "checkpoints").exists() else []
             if checkpoint_files:
                 for cp_file in checkpoint_files:
                     st.write(f"- {cp_file.name}")
             else:
-                st.info("暂无检查点文件")
+                st.info("No checkpoint files yet")
 
         st.divider()
-        st.subheader("生成报告")
-        if st.button("📝 生成完整报告"):
-            with st.spinner("生成报告中..."):
+        st.subheader("Generate Report")
+        if st.button("📝 Generate Full Report"):
+            with st.spinner("Generating report..."):
                 report = session_state.agent.generate_report()
                 st.session_state.generated_report = report
                 st.rerun()
@@ -182,7 +182,7 @@ def render(session_state):
         if st.session_state.get('generated_report'):
             st.markdown(st.session_state.generated_report)
             st.download_button(
-                "下载报告",
+                "Download report",
                 st.session_state.generated_report,
                 file_name="analysis_report.md",
                 mime="text/markdown"

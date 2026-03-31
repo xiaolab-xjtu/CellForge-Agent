@@ -583,7 +583,7 @@ class AnalysisPlanner:
         step_id = 1
 
         has_existing_pca = any("PCA" in t for t in existing_types)
-        has_existing_clustering = any("聚类" in t for t in existing_types)
+        has_existing_clustering = any("clustering" in t.lower() or "Clustering" in t for t in existing_types)
 
         if not has_existing_pca:
             for step in self._create_preprocessing_steps(user_cfg):
@@ -760,7 +760,7 @@ class AnalysisPlanner:
     def _should_include_trajectory(self, research: str) -> bool:
         """Determine if trajectory analysis should be included."""
         research_lower = research.lower()
-        trajectory_keywords = ["trajectory", "pseudotime", "development", "differentiation", "发育", "分化", "轨迹"]
+        trajectory_keywords = ["trajectory", "pseudotime", "development", "differentiation"]
         for keyword in trajectory_keywords:
             if keyword in research_lower:
                 return True
@@ -769,17 +769,17 @@ class AnalysisPlanner:
     def get_step_purpose(self, step_name: str) -> str:
         """Get the purpose description of a step."""
         purposes = {
-            "QC": "评估数据质量，识别低质量细胞和异常基因",
-            "normalization": "消除测序深度差异，使细胞间可比较",
-            "HVG_selection": "筛选变异大的基因，减少噪音",
-            "scaling": "标准化数据范围，防止高表达基因主导",
-            "PCA": "降维去噪，发现数据主要变异方向",
-            "batch_correction": "消除批次效应，整合不同来源的数据",
-            "neighbors": "构建细胞间邻居图，发现局部结构",
-            "clustering": "将相似细胞分组，发现细胞类型",
-            "UMAP": "二维可视化，高清展示细胞群体结构",
-            "cell_annotation": "鉴定每个cluster的细胞类型",
-            "DEG_analysis": "找出不同细胞类型间的差异表达基因",
-            "trajectory_analysis": "推断细胞发育轨迹和伪时间",
+            "QC": "Assess data quality, identify low-quality cells and outlier genes",
+            "normalization": "Remove sequencing depth differences, enable cell-to-cell comparison",
+            "HVG_selection": "Select highly variable genes, reduce noise",
+            "scaling": "Standardize data range, prevent high-expression genes from dominating",
+            "PCA": "Dimensionality reduction and denoising, find major sources of variation",
+            "batch_correction": "Remove batch effects, integrate data from different sources",
+            "neighbors": "Build cell neighbor graph, discover local structure",
+            "clustering": "Group similar cells, identify cell types",
+            "UMAP": "2D visualization, display cell population structure",
+            "cell_annotation": "Identify cell types for each cluster",
+            "DEG_analysis": "Find differentially expressed genes between cell types",
+            "trajectory_analysis": "Infer cell developmental trajectories and pseudotime",
         }
-        return purposes.get(step_name, "执行分析步骤")
+        return purposes.get(step_name, "Execute analysis step")

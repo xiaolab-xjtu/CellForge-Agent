@@ -256,7 +256,7 @@ class SkillRegistry:
     
     def get_toolbox_for_agent(self) -> str:
         """
-        Generate a formatted toolbox清单 for Agent.
+        Generate a formatted toolbox manifest for Agent.
         
         Returns:
         --------

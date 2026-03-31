@@ -158,7 +158,7 @@ class TestSkillRegistry:
             for name, purpose in [
                 ("scanpy_filter", "Filter cells"),
                 ("scanpy_normalize", "Normalize data"),
-                ("其他工具", "其他目的"),
+                ("other_tool", "Other purpose"),
             ]:
                 skill_dir = Path(tmpdir) / name
                 skill_dir.mkdir()

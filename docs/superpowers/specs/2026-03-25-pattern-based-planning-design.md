@@ -1,58 +1,58 @@
 # CellForge Agent Pattern-Based Dynamic Planning
 
-**日期**: 2026-03-25
-**状态**: Design Approved
-**方案**: Hybrid - Pattern Library + LLM Fallback
+**Date**: 2026-03-25
+**Status**: Design Approved
+**Approach**: Hybrid - Pattern Library + LLM Fallback
 
 ---
 
-## 1. 问题陈述
+## 1. Problem Statement
 
-### 1.1 当前痛点
+### 1.1 Current Pain Points
 
-- **Loop DEG**：需要硬编码循环逻辑
-- **拟时序分析**：需要特殊处理
-- **每遇新模式**：打补丁，无通用性
+- **Loop DEG**: Requires hard-coded loop logic
+- **Pseudotime analysis**: Requires special handling
+- **Every new pattern**: Patched case-by-case, no generality
 
-### 1.2 根本矛盾
+### 1.2 Root Contradiction
 
-Agent 的 Skill 是**静态**的，但用户需求是**动态**的。
+Agent Skills are **static**, but user requirements are **dynamic**.
 
 ---
 
-## 2. 解决方案概述
+## 2. Solution Overview
 
 ### 2.1 Hybrid Architecture
 
 ```
-用户输入 → PatternMatcher → [命中?] → YES → DynamicDAGGenerator
-                          → NO  → LLM Planner
-                          → Unified Execution
+User input → PatternMatcher → [Match?] → YES → DynamicDAGGenerator
+                            → NO  → LLM Planner
+                            → Unified Execution
 ```
 
-### 2.2 核心组件
+### 2.2 Core Components
 
-| 组件 | 职责 |
-|------|------|
-| Pattern Library | 预定义分析模式模板（JSON） |
-| PatternMatcher | 快速匹配 + LLM 语义兜底 |
-| DynamicDAGGenerator | Pattern + 参数 → 可执行 DAG |
-| LLM Planner | 复杂/新模式兜底 |
+| Component | Responsibility |
+|-----------|----------------|
+| Pattern Library | Predefined analysis pattern templates (JSON) |
+| PatternMatcher | Fast keyword matching + LLM semantic fallback |
+| DynamicDAGGenerator | Pattern + params → executable DAG |
+| LLM Planner | Fallback for complex/novel patterns |
 
 ---
 
 ## 3. Pattern Library
 
-### 3.1 目录结构
+### 3.1 Directory Structure
 
 ```
 skills/patterns/
-├── loop_over_group.json      # 循环分组模式
-├── subgroup_comparison.json  # 亚组比较模式
-├── trajectory_analysis.json  # 轨迹分析模式
-├── conditional_execution.json # 条件执行模式
+├── loop_over_group.json      # Loop-over-group pattern
+├── subgroup_comparison.json  # Subgroup comparison pattern
+├── trajectory_analysis.json  # Trajectory analysis pattern
+├── conditional_execution.json # Conditional execution pattern
 └── meta/
-    └── pattern_registry.json  # 模式注册表
+    └── pattern_registry.json  # Pattern registry
 ```
 
 ### 3.2 Pattern JSON Schema
@@ -89,21 +89,21 @@ skills/patterns/
 }
 ```
 
-### 3.3 预定义 Patterns
+### 3.3 Predefined Patterns
 
 #### Pattern 1: loop_over_group
 
 ```json
 {
   "pattern_id": "loop_over_group",
-  "name": "循环分组分析",
-  "description": "对数据的每个分组执行相同操作",
+  "name": "Loop-over-group analysis",
+  "description": "Execute the same operation on each group in the data",
   "trigger": {
-    "keywords_cn": ["每个", "循环", "遍历", "分别", "各类"],
+    "keywords_cn": ["each", "loop", "iterate", "separate", "per type"],
     "keywords_en": ["each", "loop", "iterate", "per", "every"],
     "examples": [
-      "对每个cluster做差异分析",
-      "对每种细胞类型比较刺激前后"
+      "Run differential analysis on each cluster",
+      "Compare pre/post stimulation for each cell type"
     ]
   },
   "template": {
@@ -126,14 +126,14 @@ skills/patterns/
 ```json
 {
   "pattern_id": "trajectory_analysis",
-  "name": "轨迹分析",
-  "description": "对细胞进行拟时序/轨迹分析",
+  "name": "Trajectory analysis",
+  "description": "Perform pseudotime/trajectory analysis on cells",
   "trigger": {
-    "keywords_cn": ["轨迹", "拟时序", "发育", "分化", "trajectory", "pseudotime"],
+    "keywords_cn": ["trajectory", "pseudotime", "development", "differentiation"],
     "keywords_en": ["trajectory", "pseudotime", "development", "differentiation"],
     "examples": [
-      "对T细胞做轨迹分析",
-      "分析细胞发育分化轨迹"
+      "Run trajectory analysis on T cells",
+      "Analyze cell developmental differentiation trajectory"
     ]
   },
   "template": {
@@ -154,30 +154,30 @@ skills/patterns/
 
 ## 4. PatternMatcher
 
-### 4.1 匹配流程
+### 4.1 Matching Flow
 
 ```
-用户输入
+User input
     ↓
 [1. Keyword Matcher]
-    ↓ 命中 Pattern?
+    ↓ Pattern matched?
   YES → [3. Parameter Extractor]
   NO  ↓
 [2. Semantic Matcher (LLM)]
-    ↓ 置信度 > 阈值?
+    ↓ Confidence > threshold?
   YES → [3. Parameter Extractor]
   NO  ↓
 [4. Fallback to LLM Planner]
 ```
 
-### 4.2 代码接口
+### 4.2 Code Interface
 
 ```python
 class PatternMatcher:
     def __init__(self, pattern_dir: str):
         self.patterns = self._load_patterns(pattern_dir)
         self.llm = APIClient()
-    
+
     def match(
         self,
         user_input: str,
@@ -185,9 +185,9 @@ class PatternMatcher:
     ) -> MatchResult:
         """
         Args:
-            user_input: 用户研究描述
+            user_input: User research description
             data_state: {obs_columns, existing_types, ...}
-        
+
         Returns:
             MatchResult: {
                 is_match: bool,
@@ -199,7 +199,7 @@ class PatternMatcher:
         pass
 ```
 
-### 4.3 匹配结果
+### 4.3 Match Result
 
 ```python
 @dataclass
@@ -215,7 +215,7 @@ class MatchResult:
 
 ## 5. DynamicDAGGenerator
 
-### 5.1 生成流程
+### 5.1 Generation Flow
 
 ```
 Pattern + Extracted Params
@@ -231,13 +231,13 @@ Pattern + Extracted Params
 [5. Return NetworkX DiGraph]
 ```
 
-### 5.2 代码接口
+### 5.2 Code Interface
 
 ```python
 class DynamicDAGGenerator:
     def __init__(self, registry: SkillRegistry):
         self.registry = registry
-    
+
     def generate(
         self,
         pattern: Pattern,
@@ -246,7 +246,7 @@ class DynamicDAGGenerator:
     ) -> DiGraph:
         """
         Generate executable DAG from Pattern + Params.
-        
+
         For loop_over_group pattern:
           Input: groupby="cluster", groups=[13 clusters]
           Output: DAG with 13 parallel deg nodes
@@ -256,9 +256,9 @@ class DynamicDAGGenerator:
 
 ---
 
-## 6. 与现有 Planner 集成
+## 6. Integration with Existing Planner
 
-### 6.1 agent.py 修改
+### 6.1 agent.py Changes
 
 ```python
 class ReActAgent:
@@ -266,7 +266,7 @@ class ReActAgent:
         # Existing
         self._llm_planner = LLMPlanner(...)
         self._registry = SkillRegistry(...)
-        
+
         # NEW: Pattern Layer
         self.pattern_matcher = PatternMatcher(
             pattern_dir="skills/patterns"
@@ -274,16 +274,16 @@ class ReActAgent:
         self.dag_generator = DynamicDAGGenerator(
             registry=self._registry
         )
-    
+
     def plan(self, background, research, existing_analysis):
         data_state = self._build_data_state()
-        
+
         # Try Pattern matching first
         match_result = self.pattern_matcher.match(
             user_input=research,
             data_state=data_state
         )
-        
+
         if match_result.is_match and match_result.confidence > 0.8:
             # Use Pattern-based planning
             plan = self.dag_generator.generate(
@@ -291,7 +291,7 @@ class ReActAgent:
                 extracted_params=match_result.extracted_params
             )
             return plan.to_step_list()
-        
+
         # Fallback to LLM Planner
         return self._llm_planner.create_initial_plan(
             background=background,
@@ -300,10 +300,10 @@ class ReActAgent:
         )
 ```
 
-### 6.2 数据流
+### 6.2 Data Flow
 
 ```
-research (用户研究描述)
+research (user research description)
     │
     ▼
 PatternMatcher.match()
@@ -333,58 +333,58 @@ DiGraph {
 
 ---
 
-## 7. 实现清单
+## 7. Implementation Checklist
 
-| 优先级 | 任务 | 涉及文件 |
-|--------|------|----------|
-| P0 | 创建 Pattern Library JSON 文件 | skills/patterns/*.json |
-| P0 | 实现 PatternMatcher 类 | src/agent/pattern_matcher.py |
-| P0 | 实现 DynamicDAGGenerator 类 | src/agent/dag_generator.py |
-| P0 | 集成到 agent.py | src/agent/agent.py |
-| P1 | 实现 LLM 参数提取 | pattern_matcher.py |
-| P1 | 实现 DAG 到 Plan 转换 | dag_generator.py |
-| P2 | 添加更多 Patterns | skills/patterns/*.json |
-| P2 | 单元测试 | tests/test_pattern_*.py |
+| Priority | Task | Files |
+|----------|------|-------|
+| P0 | Create Pattern Library JSON files | skills/patterns/*.json |
+| P0 | Implement PatternMatcher class | src/agent/pattern_matcher.py |
+| P0 | Implement DynamicDAGGenerator class | src/agent/dag_generator.py |
+| P0 | Integrate into agent.py | src/agent/agent.py |
+| P1 | Implement LLM parameter extraction | pattern_matcher.py |
+| P1 | Implement DAG-to-plan conversion | dag_generator.py |
+| P2 | Add more Patterns | skills/patterns/*.json |
+| P2 | Unit tests | tests/test_pattern_*.py |
 
 ---
 
-## 8. 扩展性
+## 8. Extensibility
 
-### 8.1 添加新 Pattern
+### 8.1 Adding a New Pattern
 
-只需添加 JSON 文件到 `skills/patterns/`，无需修改代码：
+Just add a JSON file to `skills/patterns/` — no code changes needed:
 
 ```json
 // skills/patterns/batch_correction.json
 {
   "pattern_id": "batch_correction",
-  "name": "批次效应校正",
+  "name": "Batch effect correction",
   "trigger": {
-    "keywords_cn": ["批次", "校正", "整合多批次"]
+    "keywords_en": ["batch", "correction", "integrate multiple batches"]
   },
   ...
 }
 ```
 
-### 8.2 新 Pattern 自动被发现
+### 8.2 New Patterns Are Auto-Discovered
 
-PatternMatcher 启动时扫描 `skills/patterns/` 目录下所有 `.json` 文件。
-
----
-
-## 9. 设计决策
-
-| 决策点 | 选择 | 理由 |
-|--------|------|------|
-| Pattern 格式 | JSON | 人类可读，易编辑 |
-| 匹配策略 | Keyword + LLM | 快（关键词）+ 灵活（语义）|
-| 回退策略 | LLM Planner | 覆盖新/复杂模式 |
-| DAG 格式 | NetworkX DiGraph | 成熟库，支持拓扑排序 |
+PatternMatcher scans all `.json` files under `skills/patterns/` at startup.
 
 ---
 
-## 10. 已知限制
+## 9. Design Decisions
 
-- LLM 参数提取依赖 API，可能不稳定
-- 复杂 Pattern 可能需要手动调试
-- 循环次数过多时执行时间较长
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Pattern format | JSON | Human-readable, easy to edit |
+| Matching strategy | Keyword + LLM | Fast (keyword) + flexible (semantic) |
+| Fallback strategy | LLM Planner | Covers novel/complex patterns |
+| DAG format | NetworkX DiGraph | Mature library, supports topological sort |
+
+---
+
+## 10. Known Limitations
+
+- LLM parameter extraction depends on API and may be unstable
+- Complex patterns may require manual debugging
+- Too many loop iterations can result in long execution times

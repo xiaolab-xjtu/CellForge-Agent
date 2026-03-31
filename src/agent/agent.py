@@ -739,24 +739,24 @@ class ReActAgent:
         """Generate markdown report."""
         lines = []
 
-        lines.append(f"# 单细胞转录组分析报告\n")
-        lines.append(f"**项目**: {self.config.project_name}\n")
-        lines.append(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        lines.append(f"# Single-Cell Transcriptomics Analysis Report\n")
+        lines.append(f"**Project**: {self.config.project_name}\n")
+        lines.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
-        lines.append("\n## 数据概况\n")
+        lines.append("\n## Data Overview\n")
         if self._adata is not None:
-            lines.append(f"| 指标 | 值 |")
-            lines.append(f"|------|-----|")
-            lines.append(f"| 细胞数 | {self._adata.n_obs:,} |")
-            lines.append(f"| 基因数 | {self._adata.n_vars:,} |")
+            lines.append(f"| Metric | Value |")
+            lines.append(f"|--------|-------|")
+            lines.append(f"| Cells | {self._adata.n_obs:,} |")
+            lines.append(f"| Genes | {self._adata.n_vars:,} |")
 
             if "leiden" in self._adata.obs:
                 n_clusters = self._adata.obs["leiden"].nunique()
-                lines.append(f"| 聚类数 | {n_clusters} |")
+                lines.append(f"| Clusters | {n_clusters} |")
 
-        lines.append("\n## 分析步骤详情\n")
-        lines.append("| 步骤 | 状态 | Skill | 参数 |")
-        lines.append("|------|------|-------|------|")
+        lines.append("\n## Analysis Steps\n")
+        lines.append("| Step | Status | Skill | Params |")
+        lines.append("|------|--------|-------|--------|")
         for step in self._steps:
             status = "✓" if step.observation.get("success") else "✗"
             skill = step.skill_id or "N/A"

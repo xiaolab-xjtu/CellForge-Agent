@@ -110,7 +110,7 @@ cd CellForge-Agent
 
 ```bash
 conda env create -f environment.yml
-conda activate scagent_v2
+conda activate cellforge-agent
 ```
 
 ### Step 3: Configure environment variables
@@ -150,7 +150,7 @@ python -m src.cli --run \
 git clone https://github.com/HChaoLab/CellForge-Agent.git
 cd CellForge-Agent
 conda env create -f environment.yml
-conda activate scagent_v2
+conda activate cellforge-agent
 cp .env.example .env
 ```
 
