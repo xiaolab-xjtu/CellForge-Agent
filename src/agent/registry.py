@@ -204,6 +204,21 @@ class SkillRegistry:
             for entry in self._index.values()
         ]
 
+    def get_skill_dir(self, skill_id: str) -> Path | None:
+        """
+        Return the directory containing a skill's skill.json file.
+
+        Args:
+            skill_id: The unique skill identifier.
+
+        Returns:
+            Path to the skill folder, or None if not found.
+        """
+        if not self._initialized:
+            self.scan()
+        entry = self._index.get(skill_id)
+        return entry.file_path.parent if entry is not None else None
+
     def get_skills_by_capability(self, capability_id: str) -> list[dict[str, str]]:
         """
         Return skill manifest filtered to a single capability.

@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""
+scanpy_umap — execution script.
+
+Entry point: run_scanpy_umap(input_data, params_dict, default_params, output_dir)
+
+Called by SkillExecutor via exec(). The function must return an AnnData object.
+"""
+import scanpy as sc
+import anndata as ad
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import os
+import datetime
+
+def run_umap(input_data, params_dict=None, default_params=None, output_dir=None):
+    """
+    Compute UMAP dimensionality reduction for visualization.
+    
+    Memory-First: Accepts both file path (str) and AnnData object.
+    Parameter Safety: Uses default_params merged with agent_params.
+    Chart Generation: Saves UMAP plot to output_dir if provided.
+    
+    Parameters:
+    ----------
+    input_data : str or AnnData
+        Path to AnnData file or AnnData object in memory
+    params_dict : dict, optional
+        Parameters from Agent (overrides defaults)
+    default_params : dict, optional
+        UMAP parameters
+    output_dir : str, optional
+        Directory to save figure
+    
+    Returns:
+    --------
+    AnnData with UMAP coordinates in obsm['X_umap']
+    """
+    adata = input_data if isinstance(input_data, ad.AnnData) else sc.read(input_data)
+
+    make_plot = params_dict.get('make_plot', True) if params_dict else True
+    
+    default_params = default_params or {
+        'min_dist': 0.5,
+        'n_neighbors': 15,
+        'spread': 1.0,
+        'random_state': 42
+    }
+    agent_params = params_dict or {}
+    current_params = {**default_params, **agent_params}
+    
+    if 'X_pca' not in adata.obsm:
+        raise ValueError("X_pca not found. Run PCA before UMAP.")
+    
+    adata = sc.tl.umap(
+        adata,
+        min_dist=current_params.get('min_dist', 0.5),
+        random_state=current_params.get('random_state', 42),
+        copy=True
+    )
+    
+    has_umap = 'X_umap' in adata.obsm
+    umap_shape = adata.obsm['X_umap'].shape if has_umap else (0, 0)
+    
+    fig_path = None
+    if has_umap and output_dir and make_plot:
+        os.makedirs(output_dir, exist_ok=True)
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        
+        axes[0].scatter(adata.obsm['X_umap'][:, 0], adata.obsm['X_umap'][:, 1], 
+                       c=range(adata.n_obs), cmap='viridis', s=1, alpha=0.5)
+        axes[0].set_title('UMAP - Cell Index')
+        axes[0].set_xlabel('UMAP1')
+        axes[0].set_ylabel('UMAP2')
+        
+        if 'leiden' in adata.obs:
+            leiden_colors = adata.obs['leiden'].astype('category')
+            scatter = axes[1].scatter(adata.obsm['X_umap'][:, 0], adata.obsm['X_umap'][:, 1],
+                                     c=leiden_colors.cat.codes, cmap='tab20', s=1, alpha=0.5)
+            axes[1].set_title('UMAP - Leiden Clustering')
+            axes[1].set_xlabel('UMAP1')
+            axes[1].set_ylabel('UMAP2')
+            plt.colorbar(scatter, ax=axes[1], label='Leiden Cluster')
+        else:
+            axes[1].scatter(adata.obsm['X_umap'][:, 0], adata.obsm['X_umap'][:, 1],
+                           s=1, alpha=0.5)
+            axes[1].set_title('UMAP')
+            axes[1].set_xlabel('UMAP1')
+            axes[1].set_ylabel('UMAP2')
+        
+        plt.tight_layout()
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        fig_path = os.path.join(output_dir, f'umap_{timestamp}.png')
+        fig.savefig(fig_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)
+    
+    if 'analysis_history' not in adata.uns:
+        adata.uns['analysis_history'] = []
+    
+    adata.uns['analysis_history'].append({
+        'skill_id': 'scanpy_umap',
+        'params': current_params,
+        'metrics': {
+            'has_umap': has_umap,
+            'umap_shape': list(umap_shape),
+            'n_cells': adata.n_obs,
+            'min_dist': current_params.get('min_dist', 0.5),
+            'fig_path': fig_path
+        },
+        'timestamp': datetime.datetime.now().isoformat()
+    })
+    
+    return adata

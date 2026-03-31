@@ -107,10 +107,32 @@ class SkillExecutor:
             )
 
         execution_layer = skill_spec.get("execution_layer", {})
-        _raw_code = execution_layer.get("code_template", "")
-        # code_template may be stored as a list of lines (readable JSON) or a plain string
-        code_template = "\n".join(_raw_code) if isinstance(_raw_code, list) else _raw_code
         default_params = execution_layer.get("default_params", {})
+
+        # Prefer external script file (e.g. run.py) over inline code_template
+        script_name = execution_layer.get("script")
+        if script_name:
+            skill_dir = self._registry.get_skill_dir(skill_id)
+            if skill_dir is None:
+                return ExecutionResult(
+                    success=False,
+                    error=f"Cannot resolve skill directory for: {skill_id}",
+                    output=None,
+                    metrics={},
+                )
+            script_path = skill_dir / script_name
+            if not script_path.exists():
+                return ExecutionResult(
+                    success=False,
+                    error=f"Script not found: {script_path}",
+                    output=None,
+                    metrics={},
+                )
+            code_template = script_path.read_text(encoding="utf-8")
+        else:
+            _raw_code = execution_layer.get("code_template", "")
+            # code_template may be stored as a list of lines or a plain string
+            code_template = "\n".join(_raw_code) if isinstance(_raw_code, list) else _raw_code
 
         agent_params = params or {}
         current_params = {**default_params, **agent_params}
