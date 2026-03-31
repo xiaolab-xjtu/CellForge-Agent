@@ -134,9 +134,9 @@ def mitochondrial_percentage(adata: Any, mt_prefix: str = "MT-") -> dict[str, fl
     high_mt_cells = (mt_pct > high_mt_threshold).sum() / len(mt_pct) * 100
 
     return {
-        "mean_pct": float(np.median(mt_pct)) if not np.isscalar(mt_pct) else 0.0,
-        "median_pct": float(np.median(mt_pct)) if not np.isscalar(mt_pct) else 0.0,
-        "high_mt_cells_pct": float(high_mt_cells) if not np.isscalar(high_mt_cells) else 0.0,
+        "mean_pct": float(np.ravel(np.mean(mt_pct))[0]) if not np.isscalar(mt_pct) else float(mt_pct),
+        "median_pct": float(np.ravel(np.median(mt_pct))[0]) if not np.isscalar(mt_pct) else float(mt_pct),
+        "high_mt_cells_pct": float(np.ravel(high_mt_cells)[0]) if not np.isscalar(high_mt_cells) else float(high_mt_cells),
     }
 
 

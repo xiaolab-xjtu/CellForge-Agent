@@ -9,6 +9,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Auto-load .env from project root (works in both local dev and Linux server)
+load_dotenv()
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
@@ -47,7 +51,7 @@ ANALYSIS_CONFIG = {
     },
     "hvg": {
         "n_top_genes": 2000,
-        "flavor": "seurat_v3",
+        "flavor": "seurat",
     },
     "pca": {
         "n_comps": 50,

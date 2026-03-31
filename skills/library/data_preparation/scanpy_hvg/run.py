@@ -35,7 +35,7 @@ def run_hvg(input_data, params_dict=None, default_params=None):
     
     default_params = default_params or {
         'n_top_genes': 2000,
-        'flavor': 'seurat_v3',
+        'flavor': 'seurat',
         'batch_key': None
     }
     agent_params = params_dict or {}
@@ -46,7 +46,7 @@ def run_hvg(input_data, params_dict=None, default_params=None):
     sc.pp.highly_variable_genes(
         adata,
         n_top_genes=current_params.get('n_top_genes', 2000),
-        flavor=current_params.get('flavor', 'seurat_v3'),
+        flavor=current_params.get('flavor', 'seurat'),
         batch_key=current_params.get('batch_key', None),
         inplace=True
     )
@@ -69,7 +69,7 @@ def run_hvg(input_data, params_dict=None, default_params=None):
             'n_genes_after': n_genes_after,
             'n_hvg_selected': int(n_hvg),
             'hvg_fraction': float(n_hvg / n_genes_before) if n_genes_before > 0 else 0,
-            'flavor': current_params.get('flavor', 'seurat_v3')
+            'flavor': current_params.get('flavor', 'seurat')
         },
         'timestamp': datetime.datetime.now().isoformat()
     })

@@ -16,7 +16,7 @@ dependencies:
   - pip>=23.0
   - pip:
     - celltypist>=1.0.0
-    - harmony-python>=0.0.9
+    - harmonypy>=0.0.9
     - leidenalg>=0.11.0
     - python-dotenv>=1.0.0
     - streamlit>=1.28.0

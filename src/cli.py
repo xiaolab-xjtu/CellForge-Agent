@@ -354,6 +354,8 @@ def main() -> None:
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+    # Suppress Numba's verbose DEBUG output regardless of verbose flag
+    logging.getLogger('numba').setLevel(logging.WARNING)
 
     if args.list_skills:
         cmd_list_skills(args)

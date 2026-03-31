@@ -8,7 +8,7 @@
     ],
     "default_params": {
       "n_top_genes": 2000,
-      "flavor": "seurat_v3",
+      "flavor": "seurat",
       "batch_key": null
     },
     "output_objects": [
@@ -20,7 +20,7 @@
     "purpose": "Highly variable genes (HVGs) show large differences in expression across cells and likely represent biologically meaningful variation. Filtering to HVGs reduces noise, focuses analysis on informative genes, and improves computational efficiency.",
     "parameter_impact": {
       "n_top_genes": "Number of top variable genes to select. More genes preserve more variation but include noise. 1500-3000 is typical for 10x data.",
-      "flavor": "seurat_v3 is recommended for UMI counts (accounts for mean-variance relationship). seurat is for non-UMI data."
+      "flavor": "seurat uses variance stabilization suitable for normalized counts; seurat_v3 is for raw UMI counts (requires mean-variance modeling)."
     }
   },
   "critic_layer": {
