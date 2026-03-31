@@ -107,7 +107,9 @@ class SkillExecutor:
             )
 
         execution_layer = skill_spec.get("execution_layer", {})
-        code_template = execution_layer.get("code_template", "")
+        _raw_code = execution_layer.get("code_template", "")
+        # code_template may be stored as a list of lines (readable JSON) or a plain string
+        code_template = "\n".join(_raw_code) if isinstance(_raw_code, list) else _raw_code
         default_params = execution_layer.get("default_params", {})
 
         agent_params = params or {}
