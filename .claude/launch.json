@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "CellForge Agent (Streamlit)",
+      "runtimeExecutable": "/Users/zhengtao_xiao/anaconda3/bin/streamlit",
+      "runtimeArgs": ["run", "src/frontend/app.py", "--server.port", "8501"],
+      "port": 8501
+    }
+  ]
+}
