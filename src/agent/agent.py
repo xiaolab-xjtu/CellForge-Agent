@@ -80,12 +80,17 @@ class ReActAgent:
         from src.agent.validator import ResultValidator
         from src.agent.data_checker import DataConsistencyChecker
         from src.agent.planner import AnalysisPlanner, LLMPlanner
+        from src.agent.capability_router import CapabilityRouter
         from src.core.api_client import APIClient
+        from src.core.config import LIBRARY_ROOT
 
         self.config = config or AgentConfig()
 
-        self._registry = SkillRegistry(self.config.skills_root)
+        self._registry = SkillRegistry(LIBRARY_ROOT)
         self._registry.scan()
+
+        self._capability_router = CapabilityRouter(LIBRARY_ROOT)
+        self._capability_router.scan()
 
         self._executor = SkillExecutor(self._registry)
         self._critic = SkillCritic()
@@ -103,6 +108,7 @@ class ReActAgent:
             api_client=self._api_client,
             registry=self._registry,
             max_retries=self.config.max_retries,
+            capability_router=self._capability_router,
         )
 
         self._adata: Any = None
@@ -116,6 +122,23 @@ class ReActAgent:
     def manifest(self) -> list[dict[str, str]]:
         """Get tool manifest for planning."""
         return self._registry.get_tool_manifest()
+
+    @property
+    def capabilities(self) -> list[dict]:
+        """Get capability manifest with skills grouped under each capability."""
+        cap_manifest = self._capability_router.get_capability_manifest()
+        skills_by_cap = {}
+        for entry in self._registry.get_tool_manifest():
+            cap = entry.get("capability", "")
+            skills_by_cap.setdefault(cap, []).append(entry)
+
+        result = []
+        for cap in cap_manifest:
+            result.append({
+                **cap,
+                "skills": skills_by_cap.get(cap["id"], []),
+            })
+        return result
 
     @property
     def adata(self) -> Any:

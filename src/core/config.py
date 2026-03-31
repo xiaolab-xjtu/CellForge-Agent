@@ -13,6 +13,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 SKILLS_ROOT = PROJECT_ROOT / "skills"
+LIBRARY_ROOT = SKILLS_ROOT / "library"
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 CHECKPOINTS_DIR = PROJECT_ROOT / "checkpoints"
 PROMPTS_DIR = PROJECT_ROOT / "prompts"

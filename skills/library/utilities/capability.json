@@ -1,0 +1,10 @@
+{
+  "id": "utilities",
+  "name": "Utilities",
+  "description": "Developer tools and skill creation utilities. Includes sc-skill-creator for generating new analysis skills.",
+  "skill_ids": [
+    "sc-skill-creator"
+  ],
+  "stable": false,
+  "typical_order": 4
+}

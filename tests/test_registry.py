@@ -201,6 +201,54 @@ class TestSkillRegistry:
             ok = registry.unregister("nonexistent")
             assert ok is False
 
+    def test_capability_field_in_manifest(self):
+        """Manifest entries include capability field from skill.json."""
+        from src.agent.registry import SkillRegistry
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            skill_dir = Path(tmpdir) / "my_skill"
+            skill_dir.mkdir()
+            (skill_dir / "skill.json").write_text(json.dumps({
+                "skill_id": "my_skill",
+                "capability": "data_preparation",
+                "cognitive_layer": {"purpose": "Test"},
+            }))
+
+            registry = SkillRegistry(tmpdir)
+            registry.scan()
+            manifest = registry.get_tool_manifest()
+
+            assert manifest[0]["capability"] == "data_preparation"
+
+    def test_get_skills_by_capability(self):
+        """get_skills_by_capability filters by capability id."""
+        from src.agent.registry import SkillRegistry
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for cap, skill, purpose in [
+                ("prep", "qc", "Quality control"),
+                ("prep", "norm", "Normalization"),
+                ("dim", "pca", "Dimensionality reduction"),
+            ]:
+                d = Path(tmpdir) / cap / skill
+                d.mkdir(parents=True)
+                (d / "skill.json").write_text(json.dumps({
+                    "skill_id": skill,
+                    "capability": cap,
+                    "cognitive_layer": {"purpose": purpose},
+                }))
+
+            registry = SkillRegistry(tmpdir)
+            registry.scan()
+
+            prep_skills = registry.get_skills_by_capability("prep")
+            assert len(prep_skills) == 2
+            assert all(e["capability"] == "prep" for e in prep_skills)
+
+            dim_skills = registry.get_skills_by_capability("dim")
+            assert len(dim_skills) == 1
+            assert dim_skills[0]["id"] == "pca"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

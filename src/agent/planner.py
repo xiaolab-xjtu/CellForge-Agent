@@ -69,7 +69,13 @@ On failure:
 - Ensure proper pipeline order: QC before Norm, Norm before HVG, etc.
 - Set `make_plot=True` for QC, clustering, and DEG steps"""
 
-    def __init__(self, api_client: Any, registry: Any, max_retries: int = 3) -> None:
+    def __init__(
+        self,
+        api_client: Any,
+        registry: Any,
+        max_retries: int = 3,
+        capability_router: Any | None = None,
+    ) -> None:
         """
         Initialize LLM planner.
 
@@ -77,10 +83,13 @@ On failure:
             api_client: APIClient instance for LLM calls
             registry: SkillRegistry instance for tool manifest
             max_retries: Maximum retry attempts for failed steps
+            capability_router: Optional CapabilityRouter for two-stage routing.
+                               If None, all skills are included in every prompt.
         """
         self._api_client = api_client
         self._registry = registry
         self.max_retries = max_retries
+        self._capability_router = capability_router
 
     def create_initial_plan(
         self,
@@ -99,7 +108,7 @@ On failure:
         Returns:
             List of step dicts with step_id, skill_id, reasoning, initial_params, expected_outcome
         """
-        manifest = self._registry.get_tool_manifest()
+        manifest = self._get_filtered_manifest(background, research)
         data_state = data_state or {}
 
         user_prompt = self._build_user_prompt(background, research, data_state, manifest)
@@ -132,6 +141,33 @@ On failure:
         except (json.JSONDecodeError, TypeError) as e:
             logger.warning("Failed to parse LLM response: %s, using fallback", e)
             return self._fallback_fixed_plan()
+
+    def _get_filtered_manifest(
+        self, background: str, research: str
+    ) -> list[dict[str, str]]:
+        """
+        Stage 1 routing: select capabilities, then return filtered skill manifest.
+
+        Falls back to full manifest if no router is configured or no capabilities match.
+        """
+        if self._capability_router is None:
+            return self._registry.get_tool_manifest()
+
+        combined_text = f"{background} {research}"
+        selected_caps = self._capability_router.keyword_select(combined_text)
+
+        if not selected_caps:
+            logger.debug("No capability matched — using full manifest")
+            return self._registry.get_tool_manifest()
+
+        logger.info("Stage 1 selected capabilities: %s", selected_caps)
+        filtered = self._capability_router.filter_manifest(self._registry, selected_caps)
+
+        if not filtered:
+            logger.warning("Filtered manifest is empty — falling back to full manifest")
+            return self._registry.get_tool_manifest()
+
+        return filtered
 
     def _parse_json_response(self, response: str) -> list | None:
         """Parse JSON from LLM response, handling common issues."""

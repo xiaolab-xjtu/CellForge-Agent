@@ -1,0 +1,13 @@
+{
+  "id": "representation",
+  "name": "Representation and Integration",
+  "description": "Dimensionality reduction, neighbor graph construction, visualization, and batch effect correction. Use when the user needs PCA, UMAP, or to integrate data from multiple batches.",
+  "skill_ids": [
+    "scanpy_pca",
+    "scanpy_neighbors",
+    "scanpy_umap",
+    "harmony_batch"
+  ],
+  "stable": true,
+  "typical_order": 2
+}

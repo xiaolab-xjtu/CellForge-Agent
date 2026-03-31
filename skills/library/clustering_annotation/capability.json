@@ -1,0 +1,12 @@
+{
+  "id": "clustering_annotation",
+  "name": "Clustering and Annotation",
+  "description": "Cell clustering, cell type annotation, and differential expression analysis. Use when the user needs to identify cell types, find marker genes, or compare conditions.",
+  "skill_ids": [
+    "scanpy_leiden",
+    "scanpy_rank_genes",
+    "celltypist_annotate"
+  ],
+  "stable": true,
+  "typical_order": 3
+}

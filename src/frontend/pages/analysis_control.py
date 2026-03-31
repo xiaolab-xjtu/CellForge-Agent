@@ -31,6 +31,53 @@ def render(session_state):
         st.write("**var (gene metadata, first 5 rows):**")
         st.dataframe(agent.adata.var.head())
 
+    # ── Capability Tree ──────────────────────────────────────────────────────
+    with st.expander("🗂️ Skill Library", expanded=False):
+        st.caption(
+            "Skills are organized into capabilities. "
+            "The planner automatically selects the relevant capability group "
+            "before picking specific skills."
+        )
+        try:
+            capabilities = agent.capabilities
+        except Exception:
+            capabilities = []
+
+        _CAP_ICON = {
+            "data_preparation": "🧪",
+            "representation": "📐",
+            "clustering_annotation": "🔬",
+            "utilities": "🔧",
+        }
+
+        if capabilities:
+            for cap in capabilities:
+                cap_id = cap["id"]
+                icon = _CAP_ICON.get(cap_id, "📦")
+                stable_badge = "" if cap.get("stable", True) else " *(experimental)*"
+                header = f"{icon} **{cap['name']}**{stable_badge}"
+
+                with st.expander(header, expanded=False):
+                    st.caption(cap["description"])
+                    skills = cap.get("skills", [])
+                    if skills:
+                        cols = st.columns(min(len(skills), 3))
+                        for idx, skill in enumerate(skills):
+                            with cols[idx % 3]:
+                                st.markdown(
+                                    f"<div style='border:1px solid #ddd; border-radius:6px; "
+                                    f"padding:8px; margin:4px; font-size:0.85em;'>"
+                                    f"<b><code>{skill['id']}</code></b><br>"
+                                    f"<span style='color:#555;'>{skill['purpose']}</span>"
+                                    f"</div>",
+                                    unsafe_allow_html=True,
+                                )
+                    else:
+                        st.info("No skills in this capability yet.")
+        else:
+            st.warning("Could not load capability library.")
+
+    # ── Analysis Plan ────────────────────────────────────────────────────────
     with st.expander("📋 Analysis Plan", expanded=True):
         if not session_state.background_loaded:
             st.warning("Please load background and research in the sidebar first")
@@ -83,7 +130,17 @@ def render(session_state):
                                     st.session_state.selected_steps.add(i)
 
                     with col2:
-                        st.write(f"**Skill**: `{step.get('skill_id', 'N/A')}`")
+                        skill_id = step.get('skill_id', 'N/A')
+                        # Look up capability for this skill
+                        skill_cap = ""
+                        try:
+                            manifest = agent.manifest
+                            entry = next((s for s in manifest if s["id"] == skill_id), None)
+                            if entry and entry.get("capability"):
+                                skill_cap = f" · *{entry['capability']}*"
+                        except Exception:
+                            pass
+                        st.write(f"**Skill**: `{skill_id}`{skill_cap}")
 
                         if step.get('reasoning'):
                             st.write(f"**🤔 LLM Reasoning**: {step['reasoning']}")

@@ -1,0 +1,14 @@
+{
+  "id": "data_preparation",
+  "name": "Data Preparation",
+  "description": "Quality control, normalization, and feature selection to prepare raw count data. Use when the user needs to clean, filter, or preprocess data before analysis.",
+  "skill_ids": [
+    "scanpy_qc",
+    "scanpy_filter_cells",
+    "scanpy_normalize",
+    "scanpy_hvg",
+    "scanpy_scale"
+  ],
+  "stable": true,
+  "typical_order": 1
+}

@@ -44,6 +44,7 @@ class SkillIndexEntry:
     """Lightweight index entry for a skill."""
     skill_id: str
     purpose: str
+    capability: str
     file_path: Path
 
 
@@ -139,10 +140,12 @@ class SkillRegistry:
 
         cognitive_layer = skill_data.get("cognitive_layer", {})
         purpose = cognitive_layer.get("purpose", "N/A")
+        capability = skill_data.get("capability", "")
 
         return SkillIndexEntry(
             skill_id=skill_id,
             purpose=purpose,
+            capability=capability,
             file_path=skill_json_path.resolve(),
         )
 
@@ -197,8 +200,27 @@ class SkillRegistry:
             self.scan()
 
         return [
-            {"id": entry.skill_id, "purpose": entry.purpose}
+            {"id": entry.skill_id, "purpose": entry.purpose, "capability": entry.capability}
             for entry in self._index.values()
+        ]
+
+    def get_skills_by_capability(self, capability_id: str) -> list[dict[str, str]]:
+        """
+        Return skill manifest filtered to a single capability.
+
+        Args:
+            capability_id: The capability identifier to filter by.
+
+        Returns:
+            list[dict]: Skills in that capability with 'id', 'purpose', 'capability'.
+        """
+        if not self._initialized:
+            self.scan()
+
+        return [
+            {"id": entry.skill_id, "purpose": entry.purpose, "capability": entry.capability}
+            for entry in self._index.values()
+            if entry.capability == capability_id
         ]
 
     def register_skill_folder(self, folder_path: str | Path) -> bool:
