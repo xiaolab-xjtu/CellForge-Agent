@@ -1,0 +1,22 @@
+{
+  "_comment": "Copy this folder to skills/library/<your_capability_id>/ and fill in all fields.",
+
+  "id": "your_capability_id",
+  "name": "Human-Readable Capability Name",
+  "description": "One or two sentences describing what this capability does and when the planner should activate it. This text appears in the UI.",
+
+  "skill_ids": [
+    "skill_a",
+    "skill_b"
+  ],
+
+  "stable": true,
+  "typical_order": 5,
+
+  "_notes": {
+    "stable": "Set to false for experimental capabilities — they will appear in the UI as developer utilities, not user-selectable.",
+    "typical_order": "Lower numbers run first in the standard pipeline. Use 1-3 for core analysis steps, 4+ for optional or utility steps.",
+    "skill_ids": "List the skill_id values of the internal skills belonging to this capability. Each skill must have a matching folder under this capability directory.",
+    "routing_keywords": "To make the CapabilityRouter activate this capability, add keyword/phrase rules to _CAPABILITY_RULES in src/agent/capability_router.py."
+  }
+}

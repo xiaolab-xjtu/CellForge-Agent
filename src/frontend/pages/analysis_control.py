@@ -50,30 +50,73 @@ def render(session_state):
             "utilities": "🔧",
         }
 
+        # Search/filter
+        skill_search = st.text_input(
+            "🔍 Filter skills", value="", placeholder="e.g. normalize, pca …",
+            key="skill_library_search",
+            label_visibility="collapsed",
+        )
+        search_lower = skill_search.strip().lower()
+
         if capabilities:
-            for cap in capabilities:
+            # Split into user-facing (stable) and developer (non-stable / empty)
+            user_caps = [c for c in capabilities if c.get("stable", True) and c.get("skills")]
+            dev_caps  = [c for c in capabilities if not c.get("stable", True) or not c.get("skills")]
+
+            for cap in user_caps:
                 cap_id = cap["id"]
                 icon = _CAP_ICON.get(cap_id, "📦")
-                stable_badge = "" if cap.get("stable", True) else " *(experimental)*"
-                header = f"{icon} **{cap['name']}**{stable_badge}"
+                skills = cap.get("skills", [])
 
-                with st.expander(header, expanded=False):
+                # Apply search filter
+                if search_lower:
+                    skills = [
+                        s for s in skills
+                        if search_lower in s["id"].lower()
+                        or search_lower in s.get("purpose", "").lower()
+                    ]
+                    if not skills:
+                        continue  # hide the capability when no skills match search
+
+                count_badge = f"  `{len(skills)} skill{'s' if len(skills) != 1 else ''}`"
+                header = f"{icon} **{cap['name']}**{count_badge}"
+
+                with st.expander(header, expanded=bool(search_lower)):
                     st.caption(cap["description"])
-                    skills = cap.get("skills", [])
-                    if skills:
-                        cols = st.columns(min(len(skills), 3))
-                        for idx, skill in enumerate(skills):
-                            with cols[idx % 3]:
-                                st.markdown(
-                                    f"<div style='border:1px solid #ddd; border-radius:6px; "
-                                    f"padding:8px; margin:4px; font-size:0.85em;'>"
-                                    f"<b><code>{skill['id']}</code></b><br>"
-                                    f"<span style='color:#555;'>{skill['purpose']}</span>"
-                                    f"</div>",
-                                    unsafe_allow_html=True,
-                                )
-                    else:
-                        st.info("No skills in this capability yet.")
+                    cols = st.columns(min(max(len(skills), 1), 3))
+                    for idx, skill in enumerate(skills):
+                        with cols[idx % 3]:
+                            st.markdown(
+                                f"<div style='border:1px solid #e0e0e0; border-radius:6px; "
+                                f"padding:8px; margin:4px 2px; font-size:0.83em; background:#fafafa;'>"
+                                f"<b><code>{skill['id']}</code></b><br>"
+                                f"<span style='color:#555;'>{skill.get('purpose', '')}</span>"
+                                f"</div>",
+                                unsafe_allow_html=True,
+                            )
+
+            # Developer / non-user capabilities
+            if dev_caps and not search_lower:
+                st.markdown(
+                    "<hr style='margin:8px 0; border-color:#eee;'>",
+                    unsafe_allow_html=True,
+                )
+                st.caption("🔧 **Developer utilities** — not user-selectable in analysis plans")
+                for cap in dev_caps:
+                    cap_id = cap["id"]
+                    icon = _CAP_ICON.get(cap_id, "🔧")
+                    st.markdown(
+                        f"<div style='border:1px dashed #ccc; border-radius:6px; "
+                        f"padding:6px 10px; margin:4px 0; font-size:0.82em; color:#777;'>"
+                        f"{icon} <b>{cap['name']}</b> — {cap['description']}"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+            if not user_caps and not search_lower:
+                st.warning("Could not load user-facing capabilities.")
+            elif not user_caps and search_lower:
+                st.info(f"No skills match '{skill_search}'.")
         else:
             st.warning("Could not load capability library.")
 
@@ -132,15 +175,22 @@ def render(session_state):
                     with col2:
                         skill_id = step.get('skill_id', 'N/A')
                         # Look up capability for this skill
-                        skill_cap = ""
+                        _CAP_LABELS = {
+                            "data_preparation": "🧪 Data Preparation",
+                            "representation": "📐 Representation",
+                            "clustering_annotation": "🔬 Clustering & Annotation",
+                            "utilities": "🔧 Utilities",
+                        }
                         try:
                             manifest = agent.manifest
                             entry = next((s for s in manifest if s["id"] == skill_id), None)
-                            if entry and entry.get("capability"):
-                                skill_cap = f" · *{entry['capability']}*"
+                            cap_raw = entry.get("capability", "") if entry else ""
+                            cap_label = _CAP_LABELS.get(cap_raw, cap_raw)
                         except Exception:
-                            pass
-                        st.write(f"**Skill**: `{skill_id}`{skill_cap}")
+                            cap_label = ""
+                        st.write(f"**Skill**: `{skill_id}`")
+                        if cap_label:
+                            st.caption(f"Capability: {cap_label}")
 
                         if step.get('reasoning'):
                             st.write(f"**🤔 LLM Reasoning**: {step['reasoning']}")

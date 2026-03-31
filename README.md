@@ -57,42 +57,59 @@ Typical use cases:
 
 ```text
 CellForge-Agent/
-├── skills/                     # Skill library (one folder per skill)
-│   ├── scanpy_qc/
-│   ├── scanpy_filter_cells/
-│   ├── scanpy_normalize/
-│   ├── scanpy_hvg/
-│   ├── scanpy_scale/
-│   ├── scanpy_pca/
-│   ├── scanpy_neighbors/
-│   ├── scanpy_leiden/
-│   ├── scanpy_umap/
-│   ├── scanpy_rank_genes/
-│   ├── harmony_batch/
-│   ├── celltypist_annotate/
-│   └── sc-skill-creator/
+├── skills/
+│   └── library/                        # Capability-based skill library
+│       ├── data_preparation/           # Capability 1: QC → normalize → scale
+│       │   ├── capability.json         # Capability metadata
+│       │   ├── scanpy_qc/skill.json
+│       │   ├── scanpy_filter_cells/skill.json
+│       │   ├── scanpy_normalize/skill.json
+│       │   ├── scanpy_hvg/skill.json
+│       │   └── scanpy_scale/skill.json
+│       ├── representation/             # Capability 2: PCA → neighbors → UMAP
+│       │   ├── capability.json
+│       │   ├── scanpy_pca/skill.json
+│       │   ├── scanpy_neighbors/skill.json
+│       │   ├── scanpy_umap/skill.json
+│       │   └── harmony_batch/skill.json
+│       ├── clustering_annotation/      # Capability 3: cluster → annotate → DEG
+│       │   ├── capability.json
+│       │   ├── scanpy_leiden/skill.json
+│       │   ├── celltypist_annotate/skill.json
+│       │   └── scanpy_rank_genes/skill.json
+│       ├── utilities/                  # Developer tools (not user-selectable)
+│       │   ├── capability.json
+│       │   └── sc-skill-creator/       # Claude Code skill for creating new skills
+│       └── _template/                  # Scaffold for adding new capabilities
+│           └── capability.json
 ├── src/
-│   ├── cli.py                  # CLI entrypoint
+│   ├── cli.py                          # CLI entrypoint
 │   ├── core/
-│   │   ├── config.py           # Runtime config and env handling
-│   │   └── api_client.py       # LLM/multimodal API client
+│   │   ├── config.py                   # Runtime config, LIBRARY_ROOT
+│   │   └── api_client.py               # LLM/multimodal API client
 │   ├── agent/
-│   │   ├── agent.py            # ReAct agent core
-│   │   ├── planner.py          # Analysis planner
-│   │   ├── executor.py         # Skill executor
-│   │   ├── critic.py           # Evaluation and correction
-│   │   ├── registry.py         # Skill registry/discovery
-│   │   ├── validator.py        # Numeric validator
-│   │   ├── data_checker.py     # Data consistency checker
-│   │   ├── memory.py           # Execution memory manager
-│   │   ├── reporter.py         # Report generation
-│   │   └── deep_research.py    # Deep research helper
-│   └── frontend/app.py         # Streamlit app
-├── inputs/                     # Example/test inputs
-├── tests/                      # Unit tests
-├── environment.yml             # Conda environment
-├── requirements.txt            # Pip dependencies
-└── pyproject.toml              # Packaging metadata
+│   │   ├── agent.py                    # ReAct agent core
+│   │   ├── capability_router.py        # Stage 1: capability selection
+│   │   ├── planner.py                  # Stage 2: skill planning (LLM)
+│   │   ├── executor.py                 # Skill executor
+│   │   ├── critic.py                   # Evaluation and correction
+│   │   ├── registry.py                 # Skill registry/discovery
+│   │   ├── validator.py                # Numeric validator
+│   │   ├── data_checker.py             # Data consistency checker
+│   │   ├── memory.py                   # Execution memory manager
+│   │   ├── reporter.py                 # Report generation
+│   │   └── deep_research.py            # Deep research helper
+│   └── frontend/
+│       ├── app.py                      # Streamlit app entrypoint
+│       └── pages/
+│           ├── analysis_control.py     # Analysis tab (capability tree UI)
+│           ├── result_display.py       # Results tab
+│           └── chat_interaction.py     # Chat tab
+├── tests/
+│   ├── test_registry.py
+│   └── test_capability_router.py
+├── environment.yml                     # Conda environment (cellforge-agent)
+└── pyproject.toml                      # Packaging metadata
 ```
 
 ---
@@ -331,26 +348,36 @@ print(result.observation.get("success"))
 print(result.observation.get("metrics"))
 ```
 
-### 8.3 Skill registry usage
+### 8.3 Skill registry and capability router usage
 
 ```python
-from src.agent import SkillRegistry
+from src.core.config import LIBRARY_ROOT
+from src.agent.registry import SkillRegistry
+from src.agent.capability_router import CapabilityRouter
 
-registry = SkillRegistry("skills/")
+# Registry — scans all skill.json files recursively
+registry = SkillRegistry(LIBRARY_ROOT)
 count = registry.scan()
 print("skills:", count)
 
-manifest = registry.get_tool_manifest()
+manifest = registry.get_tool_manifest()          # full flat list
 for item in manifest:
-    print(item["id"], item["purpose"])
+    print(item["id"], item["capability"], item["purpose"])
 
 spec = registry.get_skill_spec("scanpy_filter_cells")
-print(spec)
+by_cap = registry.get_skills_by_capability("data_preparation")
 
-results = registry.search("filter")
-print(results)
+# Capability router — Stage 1 selection
+router = CapabilityRouter(LIBRARY_ROOT)
+router.scan()
 
-registry.register_skill_folder("/path/to/new/skill")
+result = router.select("normalize and cluster cells")
+print("selected capabilities:", result.capability_ids)
+print("confidence scores:", result.scores)
+print("fallback?", result.fallback)
+
+# Stage 2 — filter manifest to selected capabilities
+filtered = router.filter_manifest(registry, result.capability_ids)
 ```
 
 ---
@@ -382,15 +409,96 @@ streamlit run src/frontend/app.py
 
 ---
 
-## 10. Skill Specification and Extension
+## 10. Capability Layer and Skill Extension
 
-Each skill lives in `skills/<skill_name>/skill.json`.
+### 10.1 Architecture overview
 
-### 10.1 Minimal `skill.json` example
+CellForge Agent uses a two-stage routing model:
+
+```
+User research description
+        │
+        ▼
+  Stage 1: CapabilityRouter.select()
+  (keyword + phrase matching, confidence scoring)
+        │
+        ▼
+  Selected capabilities  →  filtered skill manifest
+        │
+        ▼
+  Stage 2: LLMPlanner.create_initial_plan()
+  (LLM picks specific skills from the filtered manifest)
+```
+
+**Stage 1** reduces the skill manifest the LLM sees from all skills to only the
+relevant subset, improving plan quality and reducing token usage.
+If no capability matches confidently, the full manifest is passed as a fallback.
+
+### 10.2 Capability structure
+
+Each capability lives in `skills/library/<capability_id>/` and must contain:
+
+- `capability.json` — metadata (required)
+- One subfolder per internal skill, each containing `skill.json`
+
+**`capability.json` schema:**
+
+```json
+{
+  "id": "my_capability",
+  "name": "Human-Readable Name",
+  "description": "One or two sentences — shown in the UI and fed to the planner.",
+  "skill_ids": ["skill_a", "skill_b"],
+  "stable": true,
+  "typical_order": 1
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | ✅ | Must match the folder name |
+| `name` | ✅ | Display name |
+| `description` | ✅ | Shown in UI and planning prompts |
+| `skill_ids` | ✅ | List of internal skill ids in this capability |
+| `stable` | — | `false` = developer utility, hidden from user-facing UI |
+| `typical_order` | — | Pipeline order hint (1 = earliest) |
+
+### 10.3 Adding a new capability
+
+1. Copy `skills/library/_template/capability.json` to
+   `skills/library/<your_cap_id>/capability.json` and fill in all fields.
+
+2. Create skill subfolders:
+   ```
+   skills/library/<your_cap_id>/<skill_name>/skill.json
+   ```
+   Add `"capability": "<your_cap_id>"` as a top-level field in each `skill.json`.
+
+3. Add routing keywords/phrases in `src/agent/capability_router.py`:
+   ```python
+   _CAPABILITY_RULES["your_cap_id"] = {
+       "aliases": ["alternative name"],
+       "phrases": ["exact phrase match"],
+       "keywords": ["keyword1", "keyword2"],
+       "weight": 1.0,
+       "phrase_weight": 2.5,
+   }
+   ```
+   No other code changes are needed — `CapabilityRouter.scan()` auto-discovers
+   new `capability.json` files.
+
+4. Run validation:
+   ```bash
+   python -m src.cli --validate-skills
+   pytest tests/test_capability_router.py -v
+   ```
+
+### 10.4 Minimal `skill.json` example
 
 ```json
 {
   "skill_id": "scanpy_filter_cells",
+  "capability": "data_preparation",
   "cognitive_layer": {
     "purpose": "Filter low-quality cells based on gene counts"
   },
@@ -408,9 +516,10 @@ Each skill lives in `skills/<skill_name>/skill.json`.
 }
 ```
 
-### 10.2 Authoring recommendations
+### 10.5 Authoring recommendations
 
-- Keep `skill_id` aligned with folder name.
+- Keep `skill_id` aligned with the folder name.
+- Set `"capability"` to the parent capability id.
 - Provide conservative default parameters.
 - Define measurable critic metrics and thresholds.
 - Add corrective guidance for recoverable failure patterns.
